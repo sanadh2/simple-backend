@@ -2,8 +2,11 @@ import 'dotenv/config';
 import express, { type Request, type Response } from 'express';
 import session from 'express-session';
 import MongoStore from 'connect-mongo';
+import swaggerUi from 'swagger-ui-express';
+import cors from 'cors';
 import { env } from './config/env.js';
 import { connectDatabase } from './config/database.js';
+import { swaggerSpec } from './config/swagger.js';
 import { errorHandler, notFoundHandler, AppError, asyncHandler } from './middleware/errorHandler.js';
 import { ResponseHandler } from './utils/responseHandler.js';
 import { logger } from './utils/logger.js';
@@ -14,9 +17,25 @@ const port = env.PORT;
 
 await connectDatabase();
 
+// CORS configuration
+app.use(cors({
+  origin: env.NODE_ENV === 'production' 
+    ? ['https://yourdomain.com'] // Update with your production domain
+    : ['http://localhost:3000', 'http://localhost:3001'], // Allow local development
+  credentials: true, // Allow cookies and sessions
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
 // Body parsing middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Swagger API documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'Authentication API Documentation',
+}));
 
 // Session configuration
 app.use(
@@ -44,7 +63,8 @@ app.get('/', (req: Request, res: Response) => {
     message: 'Hello from TypeScript Express!',
     data: { 
       version: '1.0.0',
-      environment: env.NODE_ENV
+      environment: env.NODE_ENV,
+      documentation: `http://localhost:${port}/api-docs`
     }
   });
 });
@@ -71,4 +91,5 @@ app.use(errorHandler);
 
 app.listen(port, () => {
   logger.info(`✓ Server running at http://localhost:${port}`);
+  logger.info(`✓ API Documentation available at http://localhost:${port}/api-docs`);
 });

@@ -1,4 +1,4 @@
-import jwt from 'jsonwebtoken';
+import jwt, { type SignOptions } from 'jsonwebtoken';
 import type { StringValue } from 'ms';
 import { env } from '../config/env.js';
 import { User, type IUser } from '../models/User.js';
@@ -26,9 +26,11 @@ export class AuthService {
       type: 'access',
     };
 
-    return jwt.sign(payload, env.JWT_ACCESS_SECRET, {
+    const options: SignOptions = {
       expiresIn: env.JWT_ACCESS_EXPIRY as StringValue,
-    });
+    };
+
+    return jwt.sign(payload, env.JWT_ACCESS_SECRET, options);
   }
 
   /**
@@ -41,9 +43,11 @@ export class AuthService {
       type: 'refresh',
     };
 
-    return jwt.sign(payload, env.JWT_REFRESH_SECRET, {
+    const options: SignOptions = {
       expiresIn: env.JWT_REFRESH_EXPIRY as StringValue,
-    });
+    };
+
+    return jwt.sign(payload, env.JWT_REFRESH_SECRET, options);
   }
 
   /**
