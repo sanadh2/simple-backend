@@ -1,0 +1,33 @@
+import mongoose from 'mongoose';
+import { env } from './env.js';
+import { logger } from '../utils/logger.js';
+
+export const connectDatabase = async (): Promise<void> => {
+  try {
+    await mongoose.connect(env.MONGO_URI);
+    
+    logger.info('✓ MongoDB connected successfully');
+    
+    mongoose.connection.on('error', (err) => {
+      logger.error(`MongoDB connection error: ${String(err)}`);
+    });
+    
+    mongoose.connection.on('disconnected', () => {
+      logger.warn('MongoDB disconnected');
+    });
+    
+  } catch (error) {
+    logger.error(`Failed to connect to MongoDB: ${String(error)}`);
+    process.exit(1);
+  }
+};
+
+export const disconnectDatabase = async (): Promise<void> => {
+  try {
+    await mongoose.disconnect();
+    logger.info('MongoDB disconnected successfully');
+  } catch (error) {
+    logger.error(`Error disconnecting from MongoDB: ${String(error)}`);
+  }
+};
+
