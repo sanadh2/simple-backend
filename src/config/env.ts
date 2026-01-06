@@ -15,6 +15,20 @@ const envSchema = z.object({
   
   // Database Configuration
   MONGO_URI: z.url().min(1, 'MONGO_URI is required'),
+  
+  // Authentication Configuration
+  JWT_ACCESS_SECRET: z.string().min(32, 'JWT_ACCESS_SECRET must be at least 32 characters'),
+  JWT_REFRESH_SECRET: z.string().min(32, 'JWT_REFRESH_SECRET must be at least 32 characters'),
+  JWT_ACCESS_EXPIRY: z.string().default('15m'),
+  JWT_REFRESH_EXPIRY: z.string().default('7d'),
+  
+  // Session Configuration
+  SESSION_SECRET: z.string().min(32, 'SESSION_SECRET must be at least 32 characters'),
+  SESSION_MAX_AGE: z
+    .string()
+    .default('86400000')
+    .transform((val) => parseInt(val, 10))
+    .pipe(z.number().positive()),
 });
 
 // Export the inferred type
