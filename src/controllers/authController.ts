@@ -4,6 +4,7 @@ import { User } from '../models/User.js';
 import { AuthService } from '../services/authService.js';
 import { AppError, asyncHandler } from '../middleware/errorHandler.js';
 import { ResponseHandler } from '../utils/responseHandler.js';
+import { logger, Logger } from '../utils/logger.js';
 
 // Validation schemas
 const registerSchema = z.object({
@@ -38,6 +39,7 @@ export class AuthController {
     // Check if user already exists
     const existingUser = await User.findOne({ email: validatedData.email });
     if (existingUser) {
+      logger.warn('Registration attempt with existing email', { email: validatedData.email });
       throw new AppError('User with this email already exists', 409);
     }
 
@@ -57,6 +59,9 @@ export class AuthController {
       req.session.refreshToken = tokens.refreshToken;
       req.session.userId = user._id.toString();
     }
+
+    Logger.setContext({ userId: user._id.toString() });
+    logger.info('User registered successfully', { email: user.email, userId: user._id.toString() });
 
     ResponseHandler.success(res, 201, {
       message: 'User registered successfully',
@@ -85,6 +90,7 @@ export class AuthController {
     const user = await User.findOne({ email: validatedData.email }).select('+password');
 
     if (!user) {
+      logger.warn('Login attempt with non-existent email', { email: validatedData.email });
       throw new AppError('Invalid email or password', 401);
     }
 
@@ -92,6 +98,7 @@ export class AuthController {
     const isPasswordValid = await user.comparePassword(validatedData.password);
 
     if (!isPasswordValid) {
+      logger.warn('Login attempt with invalid password', { email: validatedData.email, userId: user._id.toString() });
       throw new AppError('Invalid email or password', 401);
     }
 
@@ -103,6 +110,9 @@ export class AuthController {
       req.session.refreshToken = tokens.refreshToken;
       req.session.userId = user._id.toString();
     }
+
+    Logger.setContext({ userId: user._id.toString() });
+    logger.info('User logged in successfully', { email: user.email, userId: user._id.toString() });
 
     ResponseHandler.success(res, 200, {
       message: 'Login successful',
@@ -146,6 +156,10 @@ export class AuthController {
       });
     }
 
+    if (req.userId) {
+      logger.info('User logged out', { userId: req.userId });
+    }
+
     ResponseHandler.success(res, 200, {
       message: 'Logout successful',
     });
@@ -171,6 +185,8 @@ export class AuthController {
         }
       });
     }
+
+    logger.info('User logged out from all devices', { userId: req.userId });
 
     ResponseHandler.success(res, 200, {
       message: 'Logged out from all devices successfully',

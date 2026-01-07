@@ -1,50 +1,99 @@
-import winston from 'winston';
-import { env } from '../config/env.js';
+import { AsyncLocalStorage } from 'async_hooks';
 
-const levels = {
-  error: 0,
-  warn: 1,
-  info: 2,
-  http: 3,
-  debug: 4,
-};
+interface LogContext {
+  correlationId?: string;
+  userId?: string;
+  [key: string]: string | number | boolean | undefined;
+}
 
-const level = () => {
-  const isDevelopment = env.NODE_ENV === 'development';
-  return isDevelopment ? 'debug' : 'warn';
-};
+interface LogMetadata {
+  [key: string]: unknown;
+}
 
-const colors = {
-  error: 'red',
-  warn: 'yellow',
-  info: 'green',
-  http: 'magenta',
-  debug: 'white',
-};
+interface LogObject {
+  timestamp: string;
+  level: string;
+  correlationId: string;
+  message: string;
+  userId?: string;
+  meta?: LogMetadata;
+}
 
-winston.addColors(colors);
+const asyncLocalStorage = new AsyncLocalStorage<LogContext>();
 
-const format = winston.format.combine(
-  winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-  winston.format.colorize({ all: true }),
-  winston.format.printf(
-    (info) => `${String(info.timestamp)} ${String(info.level)}: ${String(info.message)}`,
-  ),
-);
+type LogLevel = 'info' | 'warn' | 'error' | 'debug';
 
-const transports = [
-  new winston.transports.Console(),
-  new winston.transports.File({
-    filename: 'logs/error.log',
-    level: 'error',
-  }),
-  new winston.transports.File({ filename: 'logs/combined.log' }),
-];
+class Logger {
+  private getTimestamp(): string {
+    return new Date().toISOString();
+  }
 
-export const logger = winston.createLogger({
-  level: level(),
-  levels,
-  format,
-  transports,
-});
+  private getContext(): LogContext {
+    return asyncLocalStorage.getStore() || {};
+  }
 
+  private formatMessage(level: LogLevel, message: string, meta?: LogMetadata): string {
+    const context = this.getContext();
+    const logObject: LogObject = {
+      timestamp: this.getTimestamp(),
+      level: level.toUpperCase(),
+      correlationId: context.correlationId || 'N/A',
+      message,
+    };
+
+    if (context.userId) {
+      logObject.userId = context.userId;
+    }
+
+    if (meta) {
+      logObject.meta = meta;
+    }
+
+    return JSON.stringify(logObject);
+  }
+
+  info(message: string, meta?: LogMetadata): void {
+    console.log(this.formatMessage('info', message, meta));
+  }
+
+  warn(message: string, meta?: LogMetadata): void {
+    console.warn(this.formatMessage('warn', message, meta));
+  }
+
+  error(message: string, error?: unknown, meta?: LogMetadata): void {
+    const errorMeta: LogMetadata = error && error instanceof Error
+      ? {
+          error: {
+            message: error.message,
+            stack: error.stack,
+            name: error.name,
+          },
+          ...meta,
+        }
+      : meta || {};
+    console.error(this.formatMessage('error', message, errorMeta));
+  }
+
+  debug(message: string, meta?: LogMetadata): void {
+    if (process.env.NODE_ENV === 'development') {
+      console.debug(this.formatMessage('debug', message, meta));
+    }
+  }
+
+  static runWithContext<T>(context: LogContext, callback: () => T): T {
+    return asyncLocalStorage.run(context, callback);
+  }
+
+  static getContext(): LogContext {
+    return asyncLocalStorage.getStore() || {};
+  }
+
+  static setContext(context: Partial<LogContext>): void {
+    const currentContext = asyncLocalStorage.getStore() || {};
+    Object.assign(currentContext, context);
+  }
+}
+
+export const logger = new Logger();
+export { Logger };
+export type { LogContext };

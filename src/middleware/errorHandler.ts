@@ -28,7 +28,7 @@ export const asyncHandler = (fn: AsyncRequestHandler) => {
 
 export const errorHandler = (
   err: Error | AppError,
-  _req: Request,
+  req: Request,
   res: Response,
   _next: NextFunction
 ): void => {
@@ -60,7 +60,18 @@ export const errorHandler = (
     message = 'Token expired';
   }
 
-  logger.error(`${statusCode} - ${message} - ${err.stack || 'No stack trace'}`);
+  const logMeta = {
+    statusCode,
+    method: req.method,
+    url: req.originalUrl,
+    ip: req.ip,
+  };
+
+  if (statusCode >= 500) {
+    logger.error(message, err, logMeta);
+  } else if (statusCode >= 400) {
+    logger.warn(message, { ...logMeta, errorName: err.name });
+  }
 
   res.status(statusCode).json({
     success: false,
@@ -73,6 +84,7 @@ export const notFoundHandler = (
   res: Response,
   next: NextFunction
 ): void => {
+  logger.warn('Route not found', { method: req.method, url: req.originalUrl, ip: req.ip });
   const error = new AppError(`Route not found - ${req.originalUrl}`, 404);
   next(error);
 };

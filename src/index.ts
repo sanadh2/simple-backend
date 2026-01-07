@@ -10,12 +10,20 @@ import { swaggerSpec } from './config/swagger.js';
 import { errorHandler, notFoundHandler, AppError, asyncHandler } from './middleware/errorHandler.js';
 import { ResponseHandler } from './utils/responseHandler.js';
 import { logger } from './utils/logger.js';
+import { correlationIdMiddleware } from './middleware/correlationId.js';
+import { requestLoggerMiddleware } from './middleware/requestLogger.js';
 import authRoutes from './routes/authRoutes.js';
 
 const app = express();
 const port = env.PORT;
 
 await connectDatabase();
+
+// Correlation ID middleware (must be first)
+app.use(correlationIdMiddleware);
+
+// Request logging middleware
+app.use(requestLoggerMiddleware);
 
 // CORS configuration
 app.use(cors({
@@ -24,7 +32,7 @@ app.use(cors({
     : ['http://localhost:3000', 'http://localhost:3001'], // Allow local development
   credentials: true, // Allow cookies and sessions
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Correlation-ID'],
 }));
 
 // Body parsing middleware

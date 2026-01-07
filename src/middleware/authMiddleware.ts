@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { AuthService } from '../services/authService.js';
 import { User, type IUser } from '../models/User.js';
 import { AppError, asyncHandler } from './errorHandler.js';
+import { logger, Logger } from '../utils/logger.js';
 
 // Extend Express Request type to include user
 declare module 'express-serve-static-core' {
@@ -38,6 +39,7 @@ export const authenticate = asyncHandler(
     if (user.tokensInvalidatedAt && decoded.iat) {
       const tokenIssuedAt = new Date(decoded.iat * 1000);
       if (tokenIssuedAt < user.tokensInvalidatedAt) {
+        logger.warn('Revoked token used', { userId: user._id.toString(), tokenIssuedAt, tokensInvalidatedAt: user.tokensInvalidatedAt });
         throw new AppError('Token has been revoked. Please login again.', 401);
       }
     }
@@ -45,6 +47,9 @@ export const authenticate = asyncHandler(
     // Attach user to request object
     req.user = user;
     req.userId = user._id.toString();
+    
+    // Add userId to logging context
+    Logger.setContext({ userId: user._id.toString() });
 
     next();
   }
