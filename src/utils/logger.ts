@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from 'async_hooks';
+import { Log } from '../models/Log.js';
 
 interface LogContext {
   correlationId?: string;
@@ -24,6 +25,25 @@ const asyncLocalStorage = new AsyncLocalStorage<LogContext>();
 type LogLevel = 'info' | 'warn' | 'error' | 'debug';
 
 class Logger {
+  private async saveToDatabase(
+    level: LogLevel,
+    message: string,
+    meta?: LogMetadata
+  ): Promise<void> {
+    try {
+      const context = this.getContext();
+      await Log.create({
+        timestamp: new Date(),
+        level,
+        correlationId: context.correlationId || 'N/A',
+        message,
+        userId: context.userId,
+        meta,
+      });
+    } catch (error) {
+      console.error('Failed to save log to database:', error);
+    }
+  }
   private getTimestamp(): string {
     return new Date().toISOString();
   }
@@ -54,10 +74,12 @@ class Logger {
 
   info(message: string, meta?: LogMetadata): void {
     console.log(this.formatMessage('info', message, meta));
+    this.saveToDatabase('info', message, meta).catch(() => {});
   }
 
   warn(message: string, meta?: LogMetadata): void {
     console.warn(this.formatMessage('warn', message, meta));
+    this.saveToDatabase('warn', message, meta).catch(() => {});
   }
 
   error(message: string, error?: unknown, meta?: LogMetadata): void {
@@ -72,11 +94,13 @@ class Logger {
         }
       : meta || {};
     console.error(this.formatMessage('error', message, errorMeta));
+    this.saveToDatabase('error', message, errorMeta).catch(() => {});
   }
 
   debug(message: string, meta?: LogMetadata): void {
     if (process.env.NODE_ENV === 'development') {
       console.debug(this.formatMessage('debug', message, meta));
+      this.saveToDatabase('debug', message, meta).catch(() => {});
     }
   }
 

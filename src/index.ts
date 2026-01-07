@@ -13,6 +13,8 @@ import { logger } from './utils/logger.js';
 import { correlationIdMiddleware } from './middleware/correlationId.js';
 import { requestLoggerMiddleware } from './middleware/requestLogger.js';
 import authRoutes from './routes/authRoutes.js';
+import analyticsRoutes from './routes/analyticsRoutes.js';
+import logRoutes from './routes/logRoutes.js';
 
 const app = express();
 const port = env.PORT;
@@ -92,6 +94,12 @@ app.get('/api/error', asyncHandler((_req: Request, _res: Response) => {
 
 // Authentication routes
 app.use('/api/auth', authRoutes);
+
+// Analytics routes
+app.use('/api/analytics', analyticsRoutes);
+
+// Log routes
+app.use('/api/logs', logRoutes);
 
 app.use(notFoundHandler);
 
