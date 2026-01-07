@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { AuthController } from '../controllers/authController.js';
 import { authenticate } from '../middleware/authMiddleware.js';
+import { authLimiter, strictLimiter } from '../middleware/rateLimiter.js';
 
 const router = Router();
 
@@ -52,7 +53,7 @@ const router = Router();
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/register', AuthController.register);
+router.post('/register', strictLimiter, AuthController.register);
 
 /**
  * @openapi
@@ -96,7 +97,7 @@ router.post('/register', AuthController.register);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/login', AuthController.login);
+router.post('/login', strictLimiter, AuthController.login);
 
 /**
  * @openapi
@@ -204,7 +205,7 @@ router.post('/logout-all', authenticate, AuthController.logoutAll);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/refresh', AuthController.refreshToken);
+router.post('/refresh', authLimiter, AuthController.refreshToken);
 
 /**
  * @openapi

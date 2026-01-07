@@ -54,11 +54,18 @@ export class AuthController {
     // Generate auth tokens
     const tokens = await AuthService.generateAuthTokens(user);
 
-    // Store refresh token in session
     if (req.session) {
       req.session.refreshToken = tokens.refreshToken;
       req.session.userId = user._id.toString();
     }
+
+    res.cookie('refreshToken', tokens.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: '/',
+    });
 
     Logger.setContext({ userId: user._id.toString() });
     logger.info('User registered successfully', { email: user.email, userId: user._id.toString() });
@@ -73,15 +80,14 @@ export class AuthController {
           lastName: user.lastName,
           isEmailVerified: user.isEmailVerified,
         },
-        tokens,
+        tokens: {
+          accessToken: tokens.accessToken,
+        },
       },
     });
   });
 
-  /**
-   * Login user
-   * POST /api/auth/login
-   */
+  static login = asyncHandler(async (req: Request, res: Response) => {
   static login = asyncHandler(async (req: Request, res: Response) => {
     // Validate request body
     const validatedData = loginSchema.parse(req.body);
@@ -105,11 +111,18 @@ export class AuthController {
     // Generate auth tokens
     const tokens = await AuthService.generateAuthTokens(user);
 
-    // Store refresh token in session
     if (req.session) {
       req.session.refreshToken = tokens.refreshToken;
       req.session.userId = user._id.toString();
     }
+
+    res.cookie('refreshToken', tokens.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: '/',
+    });
 
     Logger.setContext({ userId: user._id.toString() });
     logger.info('User logged in successfully', { email: user.email, userId: user._id.toString() });
@@ -124,7 +137,10 @@ export class AuthController {
           lastName: user.lastName,
           isEmailVerified: user.isEmailVerified,
         },
-        tokens,
+        tokens: {
+          accessToken: tokens.accessToken,
+          // Don't send refresh token in response body
+        },
       },
     });
   });
@@ -137,17 +153,29 @@ export class AuthController {
     const validatedBody = logoutSchema.parse(req.body);
     const bodyToken = validatedBody.refreshToken;
     let sessionToken: string | undefined;
+    let cookieToken: string | undefined;
+    
     if (req.session) {
       sessionToken = req.session.refreshToken;
     }
-    const refreshToken = bodyToken || sessionToken;
+    
+    if (req.cookies) {
+      cookieToken = req.cookies.refreshToken;
+    }
+    
+    const refreshToken = bodyToken || cookieToken || sessionToken;
 
     if (refreshToken && req.userId) {
-      // Revoke the refresh token
       await AuthService.revokeRefreshToken(req.userId, refreshToken);
     }
 
-    // Destroy session
+    res.clearCookie('refreshToken', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/',
+    });
+
     if (req.session) {
       req.session.destroy((err) => {
         if (err) {
@@ -174,10 +202,15 @@ export class AuthController {
       throw new AppError('Authentication required', 401);
     }
 
-    // Revoke all refresh tokens
     await AuthService.revokeAllRefreshTokens(req.userId);
 
-    // Destroy session
+    res.clearCookie('refreshToken', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/',
+    });
+
     if (req.session) {
       req.session.destroy((err) => {
         if (err) {
@@ -198,28 +231,32 @@ export class AuthController {
    * POST /api/auth/refresh
    */
   static refreshToken = asyncHandler(async (req: Request, res: Response) => {
-    // Get refresh token from body or session
+    let cookieToken: string | undefined;
     let bodyToken: string | undefined;
     let sessionToken: string | undefined;
 
-    // Try to get from body first
-    if (req.body && typeof req.body === 'object' && 'refreshToken' in req.body) {
-      const validatedBody = refreshTokenSchema.parse(req.body);
-      bodyToken = validatedBody.refreshToken;
+    if (req.cookies) {
+      cookieToken = req.cookies.refreshToken;
     }
 
-    // Get from session as fallback
+    if (req.body && typeof req.body === 'object' && 'refreshToken' in req.body) {
+      try {
+        const validatedBody = refreshTokenSchema.parse(req.body);
+        bodyToken = validatedBody.refreshToken;
+      } catch {
+      }
+    }
+
     if (req.session) {
       sessionToken = req.session.refreshToken;
     }
 
-    const refreshToken = bodyToken || sessionToken;
+    const refreshToken = cookieToken || bodyToken || sessionToken;
 
     if (!refreshToken) {
       throw new AppError('Refresh token is required', 400);
     }
 
-    // Generate new access token
     const accessToken = await AuthService.refreshAccessToken(refreshToken);
 
     ResponseHandler.success(res, 200, {

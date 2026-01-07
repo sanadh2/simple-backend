@@ -4,6 +4,7 @@ import session from 'express-session';
 import MongoStore from 'connect-mongo';
 import swaggerUi from 'swagger-ui-express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import { env } from './config/env.js';
 import { connectDatabase } from './config/database.js';
 import { swaggerSpec } from './config/swagger.js';
@@ -12,6 +13,7 @@ import { ResponseHandler } from './utils/responseHandler.js';
 import { logger } from './utils/logger.js';
 import { correlationIdMiddleware } from './middleware/correlationId.js';
 import { requestLoggerMiddleware } from './middleware/requestLogger.js';
+import { globalLimiter } from './middleware/rateLimiter.js';
 import { startLogWorker, stopLogWorker } from './workers/logWorker.js';
 import { logQueue } from './queues/logQueue.js';
 import { redisConnection } from './config/redis.js';
@@ -42,9 +44,10 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Correlation-ID'],
 }));
 
-// Body parsing middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+app.use(globalLimiter);
 
 // Swagger API documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {

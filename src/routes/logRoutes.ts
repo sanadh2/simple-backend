@@ -1,8 +1,12 @@
 import { Router } from 'express';
 import { LogController } from '../controllers/logController.js';
 import { authenticate } from '../middleware/authMiddleware.js';
+import { apiLimiter } from '../middleware/rateLimiter.js';
 
 const router = Router();
+
+// Apply rate limiting to all log routes
+router.use(apiLimiter);
 
 router.get('/', authenticate, LogController.getLogs);
 

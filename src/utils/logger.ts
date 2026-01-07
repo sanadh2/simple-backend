@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from 'async_hooks';
 import chalk from 'chalk';
 import { logQueue, type LogJob } from '../queues/logQueue.js';
+import { env } from '../config/env.js';
 
 interface LogContext {
   correlationId?: string;
@@ -140,7 +141,7 @@ class Logger {
   }
 
   debug(message: string, meta?: LogMetadata, consoleOnly = false): void {
-    if (process.env.NODE_ENV === 'development') {
+    if (env.NODE_ENV === 'development') {
       console.debug(this.formatConsoleMessage('debug', message, meta));
       if (!consoleOnly) {
         this.queueLog('debug', message, meta);
