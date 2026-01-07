@@ -8,6 +8,8 @@ export interface TokenPayload {
   userId: string;
   email: string;
   type: 'access' | 'refresh';
+  iat?: number;
+  exp?: number;
 }
 
 export interface AuthTokens {
@@ -149,7 +151,10 @@ export class AuthService {
    */
   static async revokeAllRefreshTokens(userId: string): Promise<void> {
     await User.findByIdAndUpdate(userId, {
-      $set: { refreshTokens: [] },
+      $set: { 
+        refreshTokens: [],
+        tokensInvalidatedAt: new Date(),
+      },
     });
   }
 

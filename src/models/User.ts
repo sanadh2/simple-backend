@@ -8,6 +8,7 @@ export interface IUser extends Document {
   lastName: string;
   isEmailVerified: boolean;
   refreshTokens: string[];
+  tokensInvalidatedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -47,6 +48,10 @@ const userSchema = new Schema<IUser>(
       type: [String],
       default: [],
       select: false, // Don't include refresh tokens in queries by default
+    },
+    tokensInvalidatedAt: {
+      type: Date,
+      default: null,
     },
   },
   {

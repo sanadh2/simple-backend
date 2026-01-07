@@ -34,6 +34,14 @@ export const authenticate = asyncHandler(
       throw new AppError('User not found. Token may be invalid.', 401);
     }
 
+    // Check if all tokens were invalidated after this token was issued
+    if (user.tokensInvalidatedAt && decoded.iat) {
+      const tokenIssuedAt = new Date(decoded.iat * 1000);
+      if (tokenIssuedAt < user.tokensInvalidatedAt) {
+        throw new AppError('Token has been revoked. Please login again.', 401);
+      }
+    }
+
     // Attach user to request object
     req.user = user;
     req.userId = user._id.toString();
@@ -56,6 +64,15 @@ export const optionalAuthenticate = asyncHandler(
         const user = await User.findById(decoded.userId);
 
         if (user) {
+          // Check if all tokens were invalidated after this token was issued
+          if (user.tokensInvalidatedAt && decoded.iat) {
+            const tokenIssuedAt = new Date(decoded.iat * 1000);
+            if (tokenIssuedAt < user.tokensInvalidatedAt) {
+              // Token was revoked, skip authentication
+              return next();
+            }
+          }
+          
           req.user = user;
           req.userId = user._id.toString();
         }
