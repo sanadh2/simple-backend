@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from 'async_hooks';
-import { Log } from '../models/Log.js';
+import chalk from 'chalk';
+import { logQueue, type LogJob } from '../queues/logQueue.js';
 
 interface LogContext {
   correlationId?: string;
@@ -11,78 +12,117 @@ interface LogMetadata {
   [key: string]: unknown;
 }
 
-interface LogObject {
-  timestamp: string;
-  level: string;
-  correlationId: string;
-  message: string;
-  userId?: string;
-  meta?: LogMetadata;
-}
-
 const asyncLocalStorage = new AsyncLocalStorage<LogContext>();
 
 type LogLevel = 'info' | 'warn' | 'error' | 'debug';
 
 class Logger {
-  private async saveToDatabase(
+  private queueLog(
     level: LogLevel,
     message: string,
     meta?: LogMetadata
-  ): Promise<void> {
+  ): void {
     try {
       const context = this.getContext();
-      await Log.create({
+      const logData: LogJob = {
         timestamp: new Date(),
         level,
         correlationId: context.correlationId || 'N/A',
         message,
-        userId: context.userId,
-        meta,
+      };
+
+      if (context.userId) {
+        logData.userId = context.userId;
+      }
+
+      if (meta) {
+        logData.meta = meta;
+      }
+
+      void logQueue.add('log-entry', logData, {
+        priority: level === 'error' ? 1 : level === 'warn' ? 2 : 3,
+      }).catch((error) => {
+        console.error('Failed to queue log:', error);
       });
     } catch (error) {
-      console.error('Failed to save log to database:', error);
+      console.error('Failed to queue log:', error);
     }
-  }
-  private getTimestamp(): string {
-    return new Date().toISOString();
   }
 
   private getContext(): LogContext {
     return asyncLocalStorage.getStore() || {};
   }
 
-  private formatMessage(level: LogLevel, message: string, meta?: LogMetadata): string {
+  private formatConsoleMessage(level: LogLevel, message: string, meta?: LogMetadata): string {
     const context = this.getContext();
-    const logObject: LogObject = {
-      timestamp: this.getTimestamp(),
-      level: level.toUpperCase(),
-      correlationId: context.correlationId || 'N/A',
-      message,
-    };
+    const timestamp = new Date().toLocaleTimeString('en-US', { 
+      hour12: false, 
+      hour: '2-digit', 
+      minute: '2-digit', 
+      second: '2-digit' 
+    });
+
+    let levelColor: (text: string) => string;
+    let levelBadge: string;
+
+    switch (level) {
+      case 'info':
+        levelColor = chalk.blue.bold;
+        levelBadge = 'INFO ';
+        break;
+      case 'warn':
+        levelColor = chalk.yellow.bold;
+        levelBadge = 'WARN ';
+        break;
+      case 'error':
+        levelColor = chalk.red.bold;
+        levelBadge = 'ERROR';
+        break;
+      case 'debug':
+        levelColor = chalk.gray.bold;
+        levelBadge = 'DEBUG';
+        break;
+    }
+
+    const parts = [
+      chalk.dim(`[${timestamp}]`),
+      levelColor(levelBadge),
+    ];
+
+    if (context.correlationId) {
+      parts.push(chalk.magenta(`[${context.correlationId.slice(0, 8)}]`));
+    }
 
     if (context.userId) {
-      logObject.userId = context.userId;
+      parts.push(chalk.cyan(`[User: ${context.userId.slice(0, 8)}]`));
     }
 
-    if (meta) {
-      logObject.meta = meta;
+    parts.push(message);
+
+    let output = parts.join(' ');
+
+    if (meta && Object.keys(meta).length > 0) {
+      output += '\n' + chalk.dim(JSON.stringify(meta, null, 2));
     }
 
-    return JSON.stringify(logObject);
+    return output;
   }
 
-  info(message: string, meta?: LogMetadata): void {
-    console.log(this.formatMessage('info', message, meta));
-    this.saveToDatabase('info', message, meta).catch(() => {});
+  info(message: string, meta?: LogMetadata, consoleOnly = false): void {
+    console.log(this.formatConsoleMessage('info', message, meta));
+    if (!consoleOnly) {
+      this.queueLog('info', message, meta);
+    }
   }
 
-  warn(message: string, meta?: LogMetadata): void {
-    console.warn(this.formatMessage('warn', message, meta));
-    this.saveToDatabase('warn', message, meta).catch(() => {});
+  warn(message: string, meta?: LogMetadata, consoleOnly = false): void {
+    console.warn(this.formatConsoleMessage('warn', message, meta));
+    if (!consoleOnly) {
+      this.queueLog('warn', message, meta);
+    }
   }
 
-  error(message: string, error?: unknown, meta?: LogMetadata): void {
+  error(message: string, error?: unknown, meta?: LogMetadata, consoleOnly = false): void {
     const errorMeta: LogMetadata = error && error instanceof Error
       ? {
           error: {
@@ -93,14 +133,18 @@ class Logger {
           ...meta,
         }
       : meta || {};
-    console.error(this.formatMessage('error', message, errorMeta));
-    this.saveToDatabase('error', message, errorMeta).catch(() => {});
+    console.error(this.formatConsoleMessage('error', message, errorMeta));
+    if (!consoleOnly) {
+      this.queueLog('error', message, errorMeta);
+    }
   }
 
-  debug(message: string, meta?: LogMetadata): void {
+  debug(message: string, meta?: LogMetadata, consoleOnly = false): void {
     if (process.env.NODE_ENV === 'development') {
-      console.debug(this.formatMessage('debug', message, meta));
-      this.saveToDatabase('debug', message, meta).catch(() => {});
+      console.debug(this.formatConsoleMessage('debug', message, meta));
+      if (!consoleOnly) {
+        this.queueLog('debug', message, meta);
+      }
     }
   }
 

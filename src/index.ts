@@ -12,6 +12,9 @@ import { ResponseHandler } from './utils/responseHandler.js';
 import { logger } from './utils/logger.js';
 import { correlationIdMiddleware } from './middleware/correlationId.js';
 import { requestLoggerMiddleware } from './middleware/requestLogger.js';
+import { startLogWorker, stopLogWorker } from './workers/logWorker.js';
+import { logQueue } from './queues/logQueue.js';
+import { redisConnection } from './config/redis.js';
 import authRoutes from './routes/authRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
 import logRoutes from './routes/logRoutes.js';
@@ -20,6 +23,8 @@ const app = express();
 const port = env.PORT;
 
 await connectDatabase();
+
+await startLogWorker();
 
 // Correlation ID middleware (must be first)
 app.use(correlationIdMiddleware);
@@ -105,7 +110,36 @@ app.use(notFoundHandler);
 
 app.use(errorHandler);
 
-app.listen(port, () => {
-  logger.info(`✓ Server running at http://localhost:${port}`);
-  logger.info(`✓ API Documentation available at http://localhost:${port}/api-docs`);
+const server = app.listen(port, () => {
+  logger.info(`✓ Server running at http://localhost:${port}`, undefined, true);
+  logger.info(`✓ API Documentation available at http://localhost:${port}/api-docs`, undefined, true);
 });
+
+const gracefulShutdown = () => {
+  console.log('\n Graceful shutdown initiated...');
+  
+  server.close(() => {
+    console.log('✓ HTTP server closed');
+    
+    Promise.all([
+      logQueue.close().then(() => console.log('✓ Log queue closed')),
+      stopLogWorker(),
+      redisConnection.quit().then(() => console.log('✓ Redis connection closed')),
+    ])
+      .then(() => {
+        process.exit(0);
+      })
+      .catch((error) => {
+        console.error('Error during shutdown:', error);
+        process.exit(1);
+      });
+  });
+  
+  setTimeout(() => {
+    console.error('⚠️  Forceful shutdown after timeout');
+    process.exit(1);
+  }, 10000);
+};
+
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);

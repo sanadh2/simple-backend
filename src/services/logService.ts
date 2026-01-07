@@ -114,11 +114,27 @@ export class LogService {
     };
   }
 
-  static async getLogsByCorrelationId(correlationId: string) {
-    return await Log.find({ correlationId })
+  static async getLogsByCorrelationId(correlationId: string): Promise<Array<{
+    timestamp: Date;
+    level: string;
+    correlationId: string;
+    message: string;
+    userId?: string;
+    meta?: Record<string, unknown>;
+  }>> {
+    const logs = await Log.find({ correlationId })
       .sort({ timestamp: 1 })
       .select('-_id')
       .lean();
+    
+    return logs as Array<{
+      timestamp: Date;
+      level: string;
+      correlationId: string;
+      message: string;
+      userId?: string;
+      meta?: Record<string, unknown>;
+    }>;
   }
 
   static async getLogStatistics() {
@@ -163,12 +179,28 @@ export class LogService {
     );
   }
 
-  static async getRecentErrors(limit: number = 20) {
-    return await Log.find({ level: 'error' })
+  static async getRecentErrors(limit: number = 20): Promise<Array<{
+    timestamp: Date;
+    level: string;
+    correlationId: string;
+    message: string;
+    userId?: string;
+    meta?: Record<string, unknown>;
+  }>> {
+    const errors = await Log.find({ level: 'error' })
       .sort({ timestamp: -1 })
       .limit(limit)
       .select('-_id')
       .lean();
+    
+    return errors as Array<{
+      timestamp: Date;
+      level: string;
+      correlationId: string;
+      message: string;
+      userId?: string;
+      meta?: Record<string, unknown>;
+    }>;
   }
 
   static async clearOldLogs(daysToKeep: number = 30) {
@@ -185,11 +217,15 @@ export class LogService {
     };
   }
 
-  static async getLogTrends(days: number = 7) {
+  static async getLogTrends(days: number = 7): Promise<Array<{
+    date: string;
+    levels: Array<{ level: string; count: number }>;
+    totalCount: number;
+  }>> {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    return await Log.aggregate([
+    const trends = await Log.aggregate([
       {
         $match: {
           timestamp: { $gte: startDate },
@@ -230,6 +266,12 @@ export class LogService {
         },
       },
     ]);
+
+    return trends as Array<{
+      date: string;
+      levels: Array<{ level: string; count: number }>;
+      totalCount: number;
+    }>;
   }
 }
 

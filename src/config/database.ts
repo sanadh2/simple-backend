@@ -6,14 +6,14 @@ export const connectDatabase = async (): Promise<void> => {
   try {
     await mongoose.connect(env.MONGO_URI);
     
-    logger.info('✓ MongoDB connected successfully');
+    logger.info('✓ MongoDB connected successfully', undefined, true);
     
     mongoose.connection.on('error', (err) => {
       logger.error(`MongoDB connection error: ${String(err)}`);
     });
     
     mongoose.connection.on('disconnected', () => {
-      logger.warn('MongoDB disconnected');
+      logger.warn('MongoDB disconnected', undefined, true);
     });
     
   } catch (error) {
@@ -25,7 +25,7 @@ export const connectDatabase = async (): Promise<void> => {
 export const disconnectDatabase = async (): Promise<void> => {
   try {
     await mongoose.disconnect();
-    logger.info('MongoDB disconnected successfully');
+    logger.info('MongoDB disconnected successfully', undefined, true);
   } catch (error) {
     logger.error(`Error disconnecting from MongoDB: ${String(error)}`);
   }

@@ -29,6 +29,15 @@ const envSchema = z.object({
     .default('86400000')
     .transform((val) => parseInt(val, 10))
     .pipe(z.number().positive()),
+  
+  // Redis Configuration (optional, defaults for local development)
+  REDIS_HOST: z.string().default('localhost'),
+  REDIS_PORT: z
+    .string()
+    .default('6379')
+    .transform((val) => parseInt(val, 10))
+    .pipe(z.number().positive()),
+  REDIS_PASSWORD: z.string().optional(),
 });
 
 // Export the inferred type

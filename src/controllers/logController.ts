@@ -8,18 +8,14 @@ export class LogController {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 50;
     
-    const filters = {
-      level: req.query.level as string | undefined,
-      correlationId: req.query.correlationId as string | undefined,
-      userId: req.query.userId as string | undefined,
-      message: req.query.message as string | undefined,
-      startDate: req.query.startDate
-        ? new Date(req.query.startDate as string)
-        : undefined,
-      endDate: req.query.endDate
-        ? new Date(req.query.endDate as string)
-        : undefined,
-    };
+    const filters: Record<string, string | Date> = {};
+    
+    if (req.query.level) filters.level = req.query.level as string;
+    if (req.query.correlationId) filters.correlationId = req.query.correlationId as string;
+    if (req.query.userId) filters.userId = req.query.userId as string;
+    if (req.query.message) filters.message = req.query.message as string;
+    if (req.query.startDate) filters.startDate = new Date(req.query.startDate as string);
+    if (req.query.endDate) filters.endDate = new Date(req.query.endDate as string);
 
     const result = await LogService.getLogs(filters, page, limit);
 
@@ -31,7 +27,10 @@ export class LogController {
 
   static getLogsByCorrelationId = asyncHandler(
     async (req: Request, res: Response) => {
-      const { correlationId } = req.params;
+      const correlationId = req.params.correlationId;
+      if (!correlationId) {
+        throw new Error('Correlation ID is required');
+      }
       const logs = await LogService.getLogsByCorrelationId(correlationId);
 
       ResponseHandler.success(res, 200, {
