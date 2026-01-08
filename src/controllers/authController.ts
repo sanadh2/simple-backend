@@ -88,8 +88,6 @@ export class AuthController {
   });
 
   static login = asyncHandler(async (req: Request, res: Response) => {
-  static login = asyncHandler(async (req: Request, res: Response) => {
-    // Validate request body
     const validatedData = loginSchema.parse(req.body);
 
     // Find user by email (include password field)
@@ -160,7 +158,7 @@ export class AuthController {
     }
     
     if (req.cookies) {
-      cookieToken = req.cookies.refreshToken;
+      cookieToken = req.cookies.refreshToken as string | undefined;
     }
     
     const refreshToken = bodyToken || cookieToken || sessionToken;
@@ -236,7 +234,7 @@ export class AuthController {
     let sessionToken: string | undefined;
 
     if (req.cookies) {
-      cookieToken = req.cookies.refreshToken;
+      cookieToken = req.cookies.refreshToken as string | undefined;
     }
 
     if (req.body && typeof req.body === 'object' && 'refreshToken' in req.body) {
@@ -244,6 +242,7 @@ export class AuthController {
         const validatedBody = refreshTokenSchema.parse(req.body);
         bodyToken = validatedBody.refreshToken;
       } catch {
+        bodyToken = undefined;
       }
     }
 

@@ -38,6 +38,9 @@ const envSchema = z.object({
     .transform((val) => parseInt(val, 10))
     .pipe(z.number().positive()),
   REDIS_PASSWORD: z.string().optional(),
+  // Ollama Configuration (for GPT-OSS:20b)
+  OLLAMA_API_URL: z.url().default('http://localhost:11434'),
+  OLLAMA_MODEL: z.string().default('gpt-oss:20b'),
 });
 
 // Export the inferred type

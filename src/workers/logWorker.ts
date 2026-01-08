@@ -38,10 +38,6 @@ export const logWorker = new Worker<LogJob>(
   }
 );
 
-logWorker.on('completed', (job) => {
-  console.log(`Log job ${job.id} completed`);
-});
-
 logWorker.on('failed', (job, error) => {
   console.error(`Log job ${job?.id} failed:`, error.message);
 });
@@ -50,7 +46,7 @@ logWorker.on('error', (error) => {
   console.error('Log worker error:', error);
 });
 
-export const startLogWorker = async () => {
+export const startLogWorker = () => {
   console.log('✓ Log worker started');
 };
 
