@@ -1,25 +1,26 @@
-import type { Request, Response, NextFunction } from 'express';
-import { randomUUID } from 'crypto';
-import { Logger } from '../utils/logger.js';
+import { randomUUID } from "crypto"
+import type { NextFunction, Request, Response } from "express"
 
-declare module 'express-serve-static-core' {
-  interface Request {
-    correlationId?: string;
-  }
+import { Logger } from "../utils/logger.js"
+
+declare module "express-serve-static-core" {
+	interface Request {
+		correlationId?: string
+	}
 }
 
 export const correlationIdMiddleware = (
-  req: Request,
-  res: Response,
-  next: NextFunction
+	req: Request,
+	res: Response,
+	next: NextFunction
 ) => {
-  const correlationId = (req.headers['x-correlation-id'] as string) || randomUUID();
-  
-  req.correlationId = correlationId;
-  res.setHeader('X-Correlation-ID', correlationId);
+	const correlationId =
+		(req.headers["x-correlation-id"] as string) || randomUUID()
 
-  Logger.runWithContext({ correlationId }, () => {
-    next();
-  });
-};
+	req.correlationId = correlationId
+	res.setHeader("X-Correlation-ID", correlationId)
 
+	Logger.runWithContext({ correlationId }, () => {
+		next()
+	})
+}

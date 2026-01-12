@@ -35,6 +35,7 @@ Navigate to `http://localhost:3000/api-docs` in your browser.
 ### 3. Test Public Endpoints
 
 You can immediately test public endpoints like:
+
 - **POST /api/auth/register** - Create a new account
 - **POST /api/auth/login** - Login with credentials
 
@@ -50,6 +51,7 @@ To test protected endpoints:
 5. **Click "Authorize"** and then **"Close"**
 
 Now you can test protected endpoints like:
+
 - **GET /api/auth/me** - Get your profile
 - **POST /api/auth/logout** - Logout
 - **POST /api/auth/logout-all** - Logout from all devices
@@ -62,14 +64,14 @@ Each endpoint comes with example request bodies. Click "Try it out" and modify t
 
 ### Authentication Endpoints
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| POST | `/api/auth/register` | Register new user | ❌ |
-| POST | `/api/auth/login` | Login user | ❌ |
-| POST | `/api/auth/logout` | Logout current device | ✅ |
-| POST | `/api/auth/logout-all` | Logout all devices | ✅ |
-| POST | `/api/auth/refresh` | Refresh access token | ❌ |
-| GET | `/api/auth/me` | Get user profile | ✅ |
+| Method | Endpoint               | Description           | Auth Required |
+| ------ | ---------------------- | --------------------- | ------------- |
+| POST   | `/api/auth/register`   | Register new user     | ❌            |
+| POST   | `/api/auth/login`      | Login user            | ❌            |
+| POST   | `/api/auth/logout`     | Logout current device | ✅            |
+| POST   | `/api/auth/logout-all` | Logout all devices    | ✅            |
+| POST   | `/api/auth/refresh`    | Refresh access token  | ❌            |
+| GET    | `/api/auth/me`         | Get user profile      | ✅            |
 
 ## Example Workflow
 
@@ -106,6 +108,7 @@ From the response, copy the `accessToken` value:
 ### 3. Authorize in Swagger
 
 Click "Authorize" and enter:
+
 ```
 Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
@@ -113,6 +116,7 @@ Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ### 4. Test Protected Endpoints
 
 Now you can call:
+
 ```bash
 GET /api/auth/me
 ```
@@ -134,16 +138,19 @@ All schemas are fully documented including:
 ## Customization
 
 The Swagger configuration is located at:
+
 ```
 src/config/swagger.ts
 ```
 
 Route documentation is in:
+
 ```
 src/routes/authRoutes.ts
 ```
 
 You can modify these files to:
+
 - Add more endpoints
 - Update descriptions
 - Add new schemas
@@ -158,6 +165,7 @@ You can export the OpenAPI specification in multiple formats:
 2. **YAML Format**: Available through Swagger UI download option
 
 This spec can be used with:
+
 - API testing tools (Postman, Insomnia)
 - Code generation tools
 - API gateways
@@ -174,14 +182,17 @@ This spec can be used with:
 ## Troubleshooting
 
 ### "Authorize" button not working
+
 - Make sure you include "Bearer " before the token
 - Example: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`
 
 ### Getting 401 Unauthorized
+
 - Your access token may have expired (default: 15 minutes)
 - Use the `/api/auth/refresh` endpoint to get a new access token
 
 ### Can't see the documentation
+
 - Make sure the server is running
 - Check the console for any startup errors
 - Visit `http://localhost:3000` first to verify the server is accessible
@@ -191,9 +202,10 @@ This spec can be used with:
 The Swagger UI is currently accessible in all environments. For production deployments, consider:
 
 1. Disabling Swagger in production:
+
 ```typescript
-if (env.NODE_ENV !== 'production') {
-  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+if (env.NODE_ENV !== "production") {
+	app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec))
 }
 ```
 
@@ -205,4 +217,3 @@ if (env.NODE_ENV !== 'production') {
 - [OpenAPI Specification](https://swagger.io/specification/)
 - [Swagger UI Documentation](https://swagger.io/tools/swagger-ui/)
 - [swagger-jsdoc](https://github.com/Surnet/swagger-jsdoc)
-

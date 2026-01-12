@@ -27,21 +27,25 @@ API Request → Logger → Redis Queue → Worker → MongoDB
 ## Benefits
 
 ### ⚡ Performance
+
 - **No blocking**: API responses aren't delayed by DB writes
 - **High throughput**: Handle 10,000+ logs/second
 - **Minimal memory**: Redis is extremely efficient
 
 ### 🛡️ Reliability
+
 - **Persistent queue**: Logs survive server restarts
 - **Automatic retries**: Failed writes retry 3 times
 - **Error handling**: Failed logs kept for debugging
 
 ### 📊 Scalability
+
 - **Horizontal scaling**: Add more workers as needed
 - **Priority queues**: Errors processed first
 - **Rate limiting**: 100 logs/second per worker
 
 ### 🔧 Monitoring
+
 - **Job tracking**: See pending/completed/failed jobs
 - **Queue metrics**: Monitor queue depth and processing time
 - **Worker health**: Track worker status
@@ -102,12 +106,14 @@ defaultJobOptions: {
 ### 1. Install Redis
 
 **macOS (Homebrew):**
+
 ```bash
 brew install redis
 brew services start redis
 ```
 
 **Ubuntu/Debian:**
+
 ```bash
 sudo apt update
 sudo apt install redis-server
@@ -115,6 +121,7 @@ sudo systemctl start redis
 ```
 
 **Docker:**
+
 ```bash
 docker run -d -p 6379:6379 redis:alpine
 ```
@@ -132,6 +139,7 @@ redis-cli ping
 ### 3. Update Environment
 
 Add to your `.env`:
+
 ```bash
 REDIS_HOST=localhost
 REDIS_PORT=6379
@@ -144,6 +152,7 @@ npm run dev
 ```
 
 You should see:
+
 ```
 ✓ MongoDB connected successfully
 ✓ Redis connected successfully
@@ -158,11 +167,13 @@ You should see:
 ### Check Queue Status
 
 **Install BullMQ Board (Optional):**
+
 ```bash
 npm install -g @bull-board/api @bull-board/express
 ```
 
 Or use Redis CLI:
+
 ```bash
 redis-cli
 
@@ -179,11 +190,11 @@ LLEN bull:logs:failed
 ### View Queue Metrics
 
 ```typescript
-import { logQueue } from './queues/logQueue';
+import { logQueue } from "./queues/logQueue"
 
 // Get queue stats
-const counts = await logQueue.getJobCounts();
-console.log(counts);
+const counts = await logQueue.getJobCounts()
+console.log(counts)
 // {
 //   waiting: 10,
 //   active: 2,
@@ -192,8 +203,8 @@ console.log(counts);
 // }
 
 // Get failed jobs
-const failed = await logQueue.getFailed();
-console.log(failed);
+const failed = await logQueue.getFailed()
+console.log(failed)
 ```
 
 ---
@@ -220,6 +231,7 @@ Total: 10-50ms added to EVERY request
 ```
 
 **Impact:**
+
 - 1000 requests/min = 1000 DB connections
 - Could exhaust connection pool
 - Slow responses during DB issues
@@ -234,6 +246,7 @@ Total: <1ms added to request
 ```
 
 **Impact:**
+
 - 1000 requests/min = 1000 queue operations (fast)
 - 10 worker connections to MongoDB (controlled)
 - Responses unaffected by DB speed
@@ -247,6 +260,7 @@ Total: <1ms added to request
 **Error:** `Redis connection error: ECONNREFUSED`
 
 **Solution:**
+
 ```bash
 # Check if Redis is running
 redis-cli ping
@@ -259,11 +273,13 @@ sudo systemctl start redis # Linux
 ### Logs Not Appearing in Database
 
 1. **Check worker is running:**
+
    ```
    ✓ Log worker started  # Should see this on startup
    ```
 
 2. **Check Redis queue:**
+
    ```bash
    redis-cli LLEN bull:logs:wait
    # Should be 0 if processing normally
@@ -280,6 +296,7 @@ sudo systemctl start redis # Linux
 **Cause:** Too many jobs in queue
 
 **Solution:**
+
 ```typescript
 // Reduce retention in logQueue.ts
 removeOnComplete: {
@@ -293,6 +310,7 @@ removeOnComplete: {
 **Cause:** Worker can't keep up
 
 **Solution:**
+
 ```typescript
 // Increase concurrency in logWorker.ts
 {
@@ -307,12 +325,14 @@ removeOnComplete: {
 ### Redis in Production
 
 **Use managed Redis:**
+
 - **AWS ElastiCache**
 - **Redis Cloud**
 - **DigitalOcean Managed Redis**
 - **Heroku Redis**
 
 **Benefits:**
+
 - High availability
 - Automatic backups
 - Monitoring included
@@ -330,6 +350,7 @@ REDIS_PASSWORD=your-secure-password
 ### Scaling
 
 **Horizontal Scaling:**
+
 ```bash
 # Run multiple worker instances
 node worker1.js  # Server 1
@@ -347,30 +368,30 @@ Each worker processes jobs from the same queue, automatically distributing load.
 
 ```typescript
 // In logger.ts
-logQueue.add('error-log', errorData, { priority: 1 });
-logQueue.add('info-log', infoData, { priority: 3 });
+logQueue.add("error-log", errorData, { priority: 1 })
+logQueue.add("info-log", infoData, { priority: 3 })
 ```
 
 ### Scheduled Logs
 
 ```typescript
 // Delay log processing
-logQueue.add('log', data, {
-  delay: 5000,  // Process after 5 seconds
-});
+logQueue.add("log", data, {
+	delay: 5000, // Process after 5 seconds
+})
 ```
 
 ### Batch Processing
 
 ```typescript
 // Process multiple logs at once
-logWorker.on('completed', async (job) => {
-  const batch = await logQueue.getJobs(['waiting'], 0, 100);
-  if (batch.length >= 100) {
-    // Bulk insert to MongoDB
-    await Log.insertMany(batch.map(j => j.data));
-  }
-});
+logWorker.on("completed", async (job) => {
+	const batch = await logQueue.getJobs(["waiting"], 0, 100)
+	if (batch.length >= 100) {
+		// Bulk insert to MongoDB
+		await Log.insertMany(batch.map((j) => j.data))
+	}
+})
 ```
 
 ---
@@ -382,19 +403,19 @@ logWorker.on('completed', async (job) => {
 Add to your Express app:
 
 ```typescript
-import { createBullBoard } from '@bull-board/api';
-import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
-import { ExpressAdapter } from '@bull-board/express';
+import { createBullBoard } from "@bull-board/api"
+import { BullMQAdapter } from "@bull-board/api/bullMQAdapter"
+import { ExpressAdapter } from "@bull-board/express"
 
-const serverAdapter = new ExpressAdapter();
-serverAdapter.setBasePath('/admin/queues');
+const serverAdapter = new ExpressAdapter()
+serverAdapter.setBasePath("/admin/queues")
 
 createBullBoard({
-  queues: [new BullMQAdapter(logQueue)],
-  serverAdapter,
-});
+	queues: [new BullMQAdapter(logQueue)],
+	serverAdapter,
+})
 
-app.use('/admin/queues', serverAdapter.getRouter());
+app.use("/admin/queues", serverAdapter.getRouter())
 ```
 
 Access at: `http://localhost:3000/admin/queues`
@@ -410,4 +431,3 @@ Access at: `http://localhost:3000/admin/queues`
 ✅ **Easy monitoring** - Built-in metrics and dashboards
 
 Your logging system is now enterprise-grade! 🚀
-

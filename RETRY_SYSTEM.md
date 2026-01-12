@@ -31,7 +31,7 @@ The bookmark AI tagging system includes a comprehensive retry mechanism that han
 ### Retry Delays
 
 | Attempt | Delay | Total Time |
-|---------|-------|------------|
+| ------- | ----- | ---------- |
 | 1st     | 0s    | Immediate  |
 | 2nd     | 5s    | 5s         |
 | 3rd     | 10s   | 15s        |
@@ -49,6 +49,7 @@ The bookmark AI tagging system includes a comprehensive retry mechanism that han
 - Temporary service issues
 
 **Patterns detected:**
+
 - `network`, `timeout`, `connection`, `econnrefused`, `etimedout`
 - `rate limit`, `too many requests`
 - `service unavailable`, `bad gateway`, `gateway timeout`
@@ -62,6 +63,7 @@ The bookmark AI tagging system includes a comprehensive retry mechanism that han
 - Syntax errors
 
 **Patterns detected:**
+
 - `not found`, `unauthorized`, `forbidden`
 - `invalid`, `malformed`, `syntax error`
 
@@ -74,24 +76,26 @@ GET /api/bookmarks/jobs/:jobId
 ```
 
 **Response:**
+
 ```json
 {
-  "success": true,
-  "data": {
-    "jobId": "regenerate-123-1234567890",
-    "state": "failed",
-    "attemptsMade": 3,
-    "maxAttempts": 5,
-    "remainingAttempts": 2,
-    "isRetryable": true,
-    "canRetry": true,
-    "failedReason": "Ollama service unavailable",
-    "result": null
-  }
+	"success": true,
+	"data": {
+		"jobId": "regenerate-123-1234567890",
+		"state": "failed",
+		"attemptsMade": 3,
+		"maxAttempts": 5,
+		"remainingAttempts": 2,
+		"isRetryable": true,
+		"canRetry": true,
+		"failedReason": "Ollama service unavailable",
+		"result": null
+	}
 }
 ```
 
 **States:**
+
 - `waiting` - Job queued, waiting to be processed
 - `active` - Currently being processed
 - `completed` - Successfully completed
@@ -105,19 +109,21 @@ POST /api/bookmarks/jobs/:jobId/retry
 ```
 
 **Response:**
+
 ```json
 {
-  "success": true,
-  "data": {
-    "jobId": "regenerate-123-1234567890",
-    "state": "waiting",
-    "attemptsMade": 4,
-    "maxAttempts": 5
-  }
+	"success": true,
+	"data": {
+		"jobId": "regenerate-123-1234567890",
+		"state": "waiting",
+		"attemptsMade": 4,
+		"maxAttempts": 5
+	}
 }
 ```
 
 **Conditions:**
+
 - Job must be in `failed` state
 - Must have remaining attempts (`attemptsMade < maxAttempts`)
 - Returns 400 if conditions not met
@@ -142,17 +148,17 @@ POST /api/bookmarks/jobs/:jobId/retry
 
 ```typescript
 try {
-  // Process bookmark
+	// Process bookmark
 } catch (error) {
-  if (isPermanentError(error)) {
-    throw error; // No retry
-  }
-  
-  if (hasRetryAfter(error)) {
-    await job.moveToDelayed(retryAfter);
-  }
-  
-  throw error; // Will retry with backoff
+	if (isPermanentError(error)) {
+		throw error // No retry
+	}
+
+	if (hasRetryAfter(error)) {
+		await job.moveToDelayed(retryAfter)
+	}
+
+	throw error // Will retry with backoff
 }
 ```
 
@@ -169,10 +175,10 @@ Permanent failures are moved to `bookmark-tags-failed` queue:
 ### Check Queue Status
 
 ```typescript
-import { bookmarkQueue } from './queues/bookmarkQueue';
+import { bookmarkQueue } from "./queues/bookmarkQueue"
 
-const counts = await bookmarkQueue.getJobCounts();
-console.log(counts);
+const counts = await bookmarkQueue.getJobCounts()
+console.log(counts)
 // {
 //   waiting: 5,
 //   active: 2,
@@ -185,15 +191,15 @@ console.log(counts);
 ### Get Failed Jobs
 
 ```typescript
-const failedJobs = await bookmarkQueue.getFailed(0, 10);
-failedJobs.forEach(job => {
-  console.log({
-    id: job.id,
-    attempts: job.attemptsMade,
-    error: job.failedReason,
-    data: job.data
-  });
-});
+const failedJobs = await bookmarkQueue.getFailed(0, 10)
+failedJobs.forEach((job) => {
+	console.log({
+		id: job.id,
+		attempts: job.attemptsMade,
+		error: job.failedReason,
+		data: job.data,
+	})
+})
 ```
 
 ## Best Practices
@@ -211,6 +217,7 @@ redis-cli LLEN bull:bookmark-tags:failed
 ### 2. Handle Permanent Failures
 
 After 5 failed attempts:
+
 - Bookmark is set to `uncategorized` tag
 - Job moved to dead letter queue
 - User can manually retry or edit tags
@@ -235,7 +242,7 @@ For high volume:
 
 ```typescript
 // Increase concurrency
-concurrency: 5  // Process 5 jobs simultaneously
+concurrency: 5 // Process 5 jobs simultaneously
 ```
 
 ## Troubleshooting
@@ -245,6 +252,7 @@ concurrency: 5  // Process 5 jobs simultaneously
 **Cause:** Worker not running or Redis connection issue
 
 **Solution:**
+
 1. Check worker is started: `✓ Bookmark worker started`
 2. Verify Redis connection
 3. Check worker logs for errors
@@ -254,6 +262,7 @@ concurrency: 5  // Process 5 jobs simultaneously
 **Cause:** Permanent issue (Ollama down, invalid model, etc.)
 
 **Solution:**
+
 1. Check Ollama health: `curl http://localhost:11434/api/tags`
 2. Verify model exists: `ollama list`
 3. Check error messages in failed jobs
@@ -264,6 +273,7 @@ concurrency: 5  // Process 5 jobs simultaneously
 **Cause:** Transient errors persisting
 
 **Solution:**
+
 1. Check Ollama logs
 2. Verify network connectivity
 3. Consider increasing delay between retries
@@ -274,11 +284,11 @@ concurrency: 5  // Process 5 jobs simultaneously
 Track retry success rate:
 
 ```typescript
-const completed = await bookmarkQueue.getCompleted(0, 1000);
-const failed = await bookmarkQueue.getFailed(0, 1000);
+const completed = await bookmarkQueue.getCompleted(0, 1000)
+const failed = await bookmarkQueue.getFailed(0, 1000)
 
-const successRate = completed.length / (completed.length + failed.length);
-console.log(`Success rate: ${(successRate * 100).toFixed(2)}%`);
+const successRate = completed.length / (completed.length + failed.length)
+console.log(`Success rate: ${(successRate * 100).toFixed(2)}%`)
 ```
 
 ## Summary
@@ -292,4 +302,3 @@ console.log(`Success rate: ${(successRate * 100).toFixed(2)}%`);
 ✅ **Comprehensive logging** for debugging
 
 The retry system ensures maximum reliability while preventing infinite retry loops! 🚀
-

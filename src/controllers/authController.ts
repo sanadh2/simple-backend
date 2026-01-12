@@ -1,295 +1,315 @@
-import type { Request, Response } from 'express';
-import { z } from 'zod';
-import { User } from '../models/User.js';
-import { AuthService } from '../services/authService.js';
-import { AppError, asyncHandler } from '../middleware/errorHandler.js';
-import { ResponseHandler } from '../utils/responseHandler.js';
-import { logger, Logger } from '../utils/logger.js';
+import type { Request, Response } from "express"
+import { z } from "zod"
+
+import { AppError, asyncHandler } from "../middleware/errorHandler.js"
+import { User } from "../models/User.js"
+import { AuthService } from "../services/authService.js"
+import { Logger, logger } from "../utils/logger.js"
+import { ResponseHandler } from "../utils/responseHandler.js"
 
 // Validation schemas
 const registerSchema = z.object({
-  email: z.email('Invalid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-  firstName: z.string().min(1, 'First name is required').trim(),
-  lastName: z.string().min(1, 'Last name is required').trim(),
-});
+	email: z.email("Invalid email address"),
+	password: z.string().min(8, "Password must be at least 8 characters"),
+	firstName: z.string().min(1, "First name is required").trim(),
+	lastName: z.string().min(1, "Last name is required").trim(),
+})
 
 const loginSchema = z.object({
-  email: z.email('Invalid email address'),
-  password: z.string().min(1, 'Password is required'),
-});
+	email: z.email("Invalid email address"),
+	password: z.string().min(1, "Password is required"),
+})
 
 const refreshTokenSchema = z.object({
-  refreshToken: z.string().min(1, 'Refresh token is required'),
-});
+	refreshToken: z.string().min(1, "Refresh token is required"),
+})
 
 const logoutSchema = z.object({
-  refreshToken: z.string().optional(),
-});
+	refreshToken: z.string().optional(),
+})
 
 export class AuthController {
-  /**
-   * Register a new user
-   * POST /api/auth/register
-   */
-  static register = asyncHandler(async (req: Request, res: Response) => {
-    // Validate request body
-    const validatedData = registerSchema.parse(req.body);
+	/**
+	 * Register a new user
+	 * POST /api/auth/register
+	 */
+	static register = asyncHandler(async (req: Request, res: Response) => {
+		// Validate request body
+		const validatedData = registerSchema.parse(req.body)
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ email: validatedData.email });
-    if (existingUser) {
-      logger.warn('Registration attempt with existing email', { email: validatedData.email });
-      throw new AppError('User with this email already exists', 409);
-    }
+		// Check if user already exists
+		const existingUser = await User.findOne({ email: validatedData.email })
+		if (existingUser) {
+			logger.warn("Registration attempt with existing email", {
+				email: validatedData.email,
+			})
+			throw new AppError("User with this email already exists", 409)
+		}
 
-    // Create new user
-    const user = await User.create({
-      email: validatedData.email,
-      password: validatedData.password,
-      firstName: validatedData.firstName,
-      lastName: validatedData.lastName,
-    });
+		// Create new user
+		const user = await User.create({
+			email: validatedData.email,
+			password: validatedData.password,
+			firstName: validatedData.firstName,
+			lastName: validatedData.lastName,
+		})
 
-    // Generate auth tokens
-    const tokens = await AuthService.generateAuthTokens(user);
+		// Generate auth tokens
+		const tokens = await AuthService.generateAuthTokens(user)
 
-    if (req.session) {
-      req.session.refreshToken = tokens.refreshToken;
-      req.session.userId = user._id.toString();
-    }
+		if (req.session) {
+			req.session.refreshToken = tokens.refreshToken
+			req.session.userId = user._id.toString()
+		}
 
-    res.cookie('refreshToken', tokens.refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      path: '/',
-    });
+		res.cookie("refreshToken", tokens.refreshToken, {
+			httpOnly: true,
+			secure: process.env.NODE_ENV === "production",
+			sameSite: "strict",
+			maxAge: 7 * 24 * 60 * 60 * 1000,
+			path: "/",
+		})
 
-    Logger.setContext({ userId: user._id.toString() });
-    logger.info('User registered successfully', { email: user.email, userId: user._id.toString() });
+		Logger.setContext({ userId: user._id.toString() })
+		logger.info("User registered successfully", {
+			email: user.email,
+			userId: user._id.toString(),
+		})
 
-    ResponseHandler.success(res, 201, {
-      message: 'User registered successfully',
-      data: {
-        user: {
-          id: user._id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          isEmailVerified: user.isEmailVerified,
-        },
-        tokens: {
-          accessToken: tokens.accessToken,
-        },
-      },
-    });
-  });
+		ResponseHandler.success(res, 201, {
+			message: "User registered successfully",
+			data: {
+				user: {
+					id: user._id,
+					email: user.email,
+					firstName: user.firstName,
+					lastName: user.lastName,
+					isEmailVerified: user.isEmailVerified,
+				},
+				tokens: {
+					accessToken: tokens.accessToken,
+				},
+			},
+		})
+	})
 
-  static login = asyncHandler(async (req: Request, res: Response) => {
-    const validatedData = loginSchema.parse(req.body);
+	static login = asyncHandler(async (req: Request, res: Response) => {
+		const validatedData = loginSchema.parse(req.body)
 
-    // Find user by email (include password field)
-    const user = await User.findOne({ email: validatedData.email }).select('+password');
+		// Find user by email (include password field)
+		const user = await User.findOne({ email: validatedData.email }).select(
+			"+password"
+		)
 
-    if (!user) {
-      logger.warn('Login attempt with non-existent email', { email: validatedData.email });
-      throw new AppError('Invalid email or password', 401);
-    }
+		if (!user) {
+			logger.warn("Login attempt with non-existent email", {
+				email: validatedData.email,
+			})
+			throw new AppError("Invalid email or password", 401)
+		}
 
-    // Check password
-    const isPasswordValid = await user.comparePassword(validatedData.password);
+		// Check password
+		const isPasswordValid = await user.comparePassword(validatedData.password)
 
-    if (!isPasswordValid) {
-      logger.warn('Login attempt with invalid password', { email: validatedData.email, userId: user._id.toString() });
-      throw new AppError('Invalid email or password', 401);
-    }
+		if (!isPasswordValid) {
+			logger.warn("Login attempt with invalid password", {
+				email: validatedData.email,
+				userId: user._id.toString(),
+			})
+			throw new AppError("Invalid email or password", 401)
+		}
 
-    // Generate auth tokens
-    const tokens = await AuthService.generateAuthTokens(user);
+		// Generate auth tokens
+		const tokens = await AuthService.generateAuthTokens(user)
 
-    if (req.session) {
-      req.session.refreshToken = tokens.refreshToken;
-      req.session.userId = user._id.toString();
-    }
+		if (req.session) {
+			req.session.refreshToken = tokens.refreshToken
+			req.session.userId = user._id.toString()
+		}
 
-    res.cookie('refreshToken', tokens.refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      path: '/',
-    });
+		res.cookie("refreshToken", tokens.refreshToken, {
+			httpOnly: true,
+			secure: process.env.NODE_ENV === "production",
+			sameSite: "strict",
+			maxAge: 7 * 24 * 60 * 60 * 1000,
+			path: "/",
+		})
 
-    Logger.setContext({ userId: user._id.toString() });
-    logger.info('User logged in successfully', { email: user.email, userId: user._id.toString() });
+		Logger.setContext({ userId: user._id.toString() })
+		logger.info("User logged in successfully", {
+			email: user.email,
+			userId: user._id.toString(),
+		})
 
-    ResponseHandler.success(res, 200, {
-      message: 'Login successful',
-      data: {
-        user: {
-          id: user._id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          isEmailVerified: user.isEmailVerified,
-        },
-        tokens: {
-          accessToken: tokens.accessToken,
-          // Don't send refresh token in response body
-        },
-      },
-    });
-  });
+		ResponseHandler.success(res, 200, {
+			message: "Login successful",
+			data: {
+				user: {
+					id: user._id,
+					email: user.email,
+					firstName: user.firstName,
+					lastName: user.lastName,
+					isEmailVerified: user.isEmailVerified,
+				},
+				tokens: {
+					accessToken: tokens.accessToken,
+					// Don't send refresh token in response body
+				},
+			},
+		})
+	})
 
-  /**
-   * Logout user
-   * POST /api/auth/logout
-   */
-  static logout = asyncHandler(async (req: Request, res: Response) => {
-    const validatedBody = logoutSchema.parse(req.body);
-    const bodyToken = validatedBody.refreshToken;
-    let sessionToken: string | undefined;
-    let cookieToken: string | undefined;
-    
-    if (req.session) {
-      sessionToken = req.session.refreshToken;
-    }
-    
-    if (req.cookies) {
-      cookieToken = req.cookies.refreshToken as string | undefined;
-    }
-    
-    const refreshToken = bodyToken || cookieToken || sessionToken;
+	/**
+	 * Logout user
+	 * POST /api/auth/logout
+	 */
+	static logout = asyncHandler(async (req: Request, res: Response) => {
+		const validatedBody = logoutSchema.parse(req.body)
+		const bodyToken = validatedBody.refreshToken
+		let sessionToken: string | undefined
+		let cookieToken: string | undefined
 
-    if (refreshToken && req.userId) {
-      await AuthService.revokeRefreshToken(req.userId, refreshToken);
-    }
+		if (req.session) {
+			sessionToken = req.session.refreshToken
+		}
 
-    res.clearCookie('refreshToken', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      path: '/',
-    });
+		if (req.cookies) {
+			cookieToken = req.cookies.refreshToken as string | undefined
+		}
 
-    if (req.session) {
-      req.session.destroy((err) => {
-        if (err) {
-          throw new AppError('Failed to logout', 500);
-        }
-      });
-    }
+		const refreshToken = bodyToken || cookieToken || sessionToken
 
-    if (req.userId) {
-      logger.info('User logged out', { userId: req.userId });
-    }
+		if (refreshToken && req.userId) {
+			await AuthService.revokeRefreshToken(req.userId, refreshToken)
+		}
 
-    ResponseHandler.success(res, 200, {
-      message: 'Logout successful',
-    });
-  });
+		res.clearCookie("refreshToken", {
+			httpOnly: true,
+			secure: process.env.NODE_ENV === "production",
+			sameSite: "strict",
+			path: "/",
+		})
 
-  /**
-   * Logout from all devices
-   * POST /api/auth/logout-all
-   */
-  static logoutAll = asyncHandler(async (req: Request, res: Response) => {
-    if (!req.userId) {
-      throw new AppError('Authentication required', 401);
-    }
+		if (req.session) {
+			req.session.destroy((err) => {
+				if (err) {
+					throw new AppError("Failed to logout", 500)
+				}
+			})
+		}
 
-    await AuthService.revokeAllRefreshTokens(req.userId);
+		if (req.userId) {
+			logger.info("User logged out", { userId: req.userId })
+		}
 
-    res.clearCookie('refreshToken', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      path: '/',
-    });
+		ResponseHandler.success(res, 200, {
+			message: "Logout successful",
+		})
+	})
 
-    if (req.session) {
-      req.session.destroy((err) => {
-        if (err) {
-          throw new AppError('Failed to logout', 500);
-        }
-      });
-    }
+	/**
+	 * Logout from all devices
+	 * POST /api/auth/logout-all
+	 */
+	static logoutAll = asyncHandler(async (req: Request, res: Response) => {
+		if (!req.userId) {
+			throw new AppError("Authentication required", 401)
+		}
 
-    logger.info('User logged out from all devices', { userId: req.userId });
+		await AuthService.revokeAllRefreshTokens(req.userId)
 
-    ResponseHandler.success(res, 200, {
-      message: 'Logged out from all devices successfully',
-    });
-  });
+		res.clearCookie("refreshToken", {
+			httpOnly: true,
+			secure: process.env.NODE_ENV === "production",
+			sameSite: "strict",
+			path: "/",
+		})
 
-  /**
-   * Refresh access token
-   * POST /api/auth/refresh
-   */
-  static refreshToken = asyncHandler(async (req: Request, res: Response) => {
-    let cookieToken: string | undefined;
-    let bodyToken: string | undefined;
-    let sessionToken: string | undefined;
+		if (req.session) {
+			req.session.destroy((err) => {
+				if (err) {
+					throw new AppError("Failed to logout", 500)
+				}
+			})
+		}
 
-    if (req.cookies) {
-      cookieToken = req.cookies.refreshToken as string | undefined;
-    }
+		logger.info("User logged out from all devices", { userId: req.userId })
 
-    if (req.body && typeof req.body === 'object' && 'refreshToken' in req.body) {
-      try {
-        const validatedBody = refreshTokenSchema.parse(req.body);
-        bodyToken = validatedBody.refreshToken;
-      } catch {
-        bodyToken = undefined;
-      }
-    }
+		ResponseHandler.success(res, 200, {
+			message: "Logged out from all devices successfully",
+		})
+	})
 
-    if (req.session) {
-      sessionToken = req.session.refreshToken;
-    }
+	/**
+	 * Refresh access token
+	 * POST /api/auth/refresh
+	 */
+	static refreshToken = asyncHandler(async (req: Request, res: Response) => {
+		let cookieToken: string | undefined
+		let bodyToken: string | undefined
+		let sessionToken: string | undefined
 
-    const refreshToken = cookieToken || bodyToken || sessionToken;
+		if (req.cookies) {
+			cookieToken = req.cookies.refreshToken as string | undefined
+		}
 
-    if (!refreshToken) {
-      throw new AppError('Refresh token is required', 400);
-    }
+		if (
+			req.body &&
+			typeof req.body === "object" &&
+			"refreshToken" in req.body
+		) {
+			try {
+				const validatedBody = refreshTokenSchema.parse(req.body)
+				bodyToken = validatedBody.refreshToken
+			} catch {
+				bodyToken = undefined
+			}
+		}
 
-    const accessToken = await AuthService.refreshAccessToken(refreshToken);
+		if (req.session) {
+			sessionToken = req.session.refreshToken
+		}
 
-    ResponseHandler.success(res, 200, {
-      message: 'Token refreshed successfully',
-      data: {
-        accessToken,
-      },
-    });
-  });
+		const refreshToken = cookieToken || bodyToken || sessionToken
 
-  /**
-   * Get current user profile
-   * GET /api/auth/me
-   */
-  static getProfile = asyncHandler((_req: Request, res: Response) => {
-    if (!res.req.user) {
-      throw new AppError('Authentication required', 401);
-    }
+		if (!refreshToken) {
+			throw new AppError("Refresh token is required", 400)
+		}
 
-    const user = res.req.user;
+		const accessToken = await AuthService.refreshAccessToken(refreshToken)
 
-    ResponseHandler.success(res, 200, {
-      message: 'User profile retrieved successfully',
-      data: {
-        user: {
-          id: user._id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          isEmailVerified: user.isEmailVerified,
-          createdAt: user.createdAt,
-          updatedAt: user.updatedAt,
-        },
-      },
-    });
-  });
+		ResponseHandler.success(res, 200, {
+			message: "Token refreshed successfully",
+			data: {
+				accessToken,
+			},
+		})
+	})
+
+	/**
+	 * Get current user profile
+	 * GET /api/auth/me
+	 */
+	static getProfile = asyncHandler((_req: Request, res: Response) => {
+		if (!res.req.user) {
+			throw new AppError("Authentication required", 401)
+		}
+
+		const user = res.req.user
+
+		ResponseHandler.success(res, 200, {
+			message: "User profile retrieved successfully",
+			data: {
+				user: {
+					id: user._id,
+					email: user.email,
+					firstName: user.firstName,
+					lastName: user.lastName,
+					isEmailVerified: user.isEmailVerified,
+					createdAt: user.createdAt,
+					updatedAt: user.updatedAt,
+				},
+			},
+		})
+	})
 }

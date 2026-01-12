@@ -1,9 +1,10 @@
-import { Router } from 'express';
-import { AuthController } from '../controllers/authController.js';
-import { authenticate } from '../middleware/authMiddleware.js';
-import { authLimiter, strictLimiter } from '../middleware/rateLimiter.js';
+import { Router } from "express"
 
-const router = Router();
+import { AuthController } from "../controllers/authController.js"
+import { authenticate } from "../middleware/authMiddleware.js"
+import { authLimiter, strictLimiter } from "../middleware/rateLimiter.js"
+
+const router = Router()
 
 /**
  * @openapi
@@ -53,7 +54,7 @@ const router = Router();
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/register', strictLimiter, AuthController.register);
+router.post("/register", strictLimiter, AuthController.register)
 
 /**
  * @openapi
@@ -97,7 +98,7 @@ router.post('/register', strictLimiter, AuthController.register);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/login', strictLimiter, AuthController.login);
+router.post("/login", strictLimiter, AuthController.login)
 
 /**
  * @openapi
@@ -132,7 +133,7 @@ router.post('/login', strictLimiter, AuthController.login);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/logout', authenticate, AuthController.logout);
+router.post("/logout", authenticate, AuthController.logout)
 
 /**
  * @openapi
@@ -158,7 +159,7 @@ router.post('/logout', authenticate, AuthController.logout);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/logout-all', authenticate, AuthController.logoutAll);
+router.post("/logout-all", authenticate, AuthController.logoutAll)
 
 /**
  * @openapi
@@ -205,7 +206,7 @@ router.post('/logout-all', authenticate, AuthController.logoutAll);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/refresh', authLimiter, AuthController.refreshToken);
+router.post("/refresh", authLimiter, AuthController.refreshToken)
 
 /**
  * @openapi
@@ -243,7 +244,6 @@ router.post('/refresh', authLimiter, AuthController.refreshToken);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/me', authenticate, AuthController.getProfile);
+router.get("/me", authenticate, AuthController.getProfile)
 
-export default router;
-
+export default router
