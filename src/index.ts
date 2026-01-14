@@ -51,11 +51,8 @@ app.use(requestLoggerMiddleware)
 // CORS configuration
 app.use(
 	cors({
-		origin:
-			env.NODE_ENV === "production"
-				? ["https://yourdomain.com"] // Update with your production domain
-				: ["http://localhost:3000", "http://localhost:3001"], // Allow local development
-  credentials: true, // Allow cookies and sessions
+		origin: env.FRONTEND_URL.toString(),
+		credentials: true,
 		methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
 		allowedHeaders: ["Content-Type", "Authorization", "X-Correlation-ID"],
 	})
@@ -78,31 +75,31 @@ app.use(
 
 // Session configuration
 app.use(
-  session({
-    secret: env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    store: MongoStore.create({
-      mongoUrl: env.MONGO_URI,
+	session({
+		secret: env.SESSION_SECRET,
+		resave: false,
+		saveUninitialized: false,
+		store: MongoStore.create({
+			mongoUrl: env.MONGO_URI,
 			collectionName: "sessions",
-      ttl: env.SESSION_MAX_AGE / 1000, // Convert to seconds
-    }),
-    cookie: {
-      maxAge: env.SESSION_MAX_AGE,
-      httpOnly: true,
+			ttl: env.SESSION_MAX_AGE / 1000, // Convert to seconds
+		}),
+		cookie: {
+			maxAge: env.SESSION_MAX_AGE,
+			httpOnly: true,
 			secure: env.NODE_ENV === "production", // Use secure cookies in production
 			sameSite: "strict",
-    },
+		},
 		name: "sessionId", // Custom session cookie name
-  })
+	})
 )
 
 app.get("/", (req: Request, res: Response) => {
-  ResponseHandler.success(res, 200, {
+	ResponseHandler.success(res, 200, {
 		message: "Hello from TypeScript Express!",
-    data: { 
+		data: {
 			version: "1.0.0",
-      environment: env.NODE_ENV,
+			environment: env.NODE_ENV,
 			documentation: `http://localhost:${port}/api-docs`,
 		},
 	})
@@ -112,8 +109,8 @@ app.get(
 	"/api/test",
 	asyncHandler((_req: Request, res: Response) => {
 		const data = { test: "This is a test endpoint" }
-  
-  ResponseHandler.success(res, 200, {
+
+		ResponseHandler.success(res, 200, {
 			message: "Test endpoint",
 			data,
 		})
@@ -153,29 +150,29 @@ const server = app.listen(port, () => {
 
 const gracefulShutdown = () => {
 	console.log("\n Graceful shutdown initiated...")
-  
-  server.close(() => {
+
+	server.close(() => {
 		console.log("✓ HTTP server closed")
-    
-    Promise.all([
+
+		Promise.all([
 			logQueue.close().then(() => console.log("✓ Log queue closed")),
 			bookmarkQueue.close().then(() => console.log("✓ Bookmark queue closed")),
-      stopLogWorker(),
+			stopLogWorker(),
 			stopBookmarkWorker(),
 			redisConnection
 				.quit()
 				.then(() => console.log("✓ Redis connection closed")),
-    ])
-      .then(() => {
+		])
+			.then(() => {
 				process.exit(0)
-      })
-      .catch((error) => {
+			})
+			.catch((error) => {
 				console.error("Error during shutdown:", error)
 				process.exit(1)
 			})
 	})
-  
-  setTimeout(() => {
+
+	setTimeout(() => {
 		console.error("⚠️  Forceful shutdown after timeout")
 		process.exit(1)
 	}, 10000)

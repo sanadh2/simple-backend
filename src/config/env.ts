@@ -47,6 +47,7 @@ const envSchema = z.object({
 	// Ollama Configuration (for GPT-OSS:20b)
 	OLLAMA_API_URL: z.url().default("http://localhost:11434"),
 	OLLAMA_MODEL: z.string().default("gpt-oss:20b"),
+	FRONTEND_URL: z.url().default("http://localhost:4001"),
 })
 
 // Export the inferred type
