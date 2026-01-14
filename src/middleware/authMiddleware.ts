@@ -19,8 +19,16 @@ declare module "express-serve-static-core" {
  */
 export const authenticate = asyncHandler(
 	async (req: Request, _res: Response, next: NextFunction) => {
-		// Extract token from Authorization header
-		const token = AuthService.extractTokenFromHeader(req.headers.authorization)
+		// Extract token from cookie first (httpOnly), then fallback to Authorization header
+		let token: string | null = null
+
+		if (req.cookies?.accessToken) {
+			token = req.cookies.accessToken as string
+		}
+
+		if (!token) {
+			token = AuthService.extractTokenFromHeader(req.headers.authorization)
+		}
 
 		if (!token) {
 			throw new AppError(
@@ -69,7 +77,15 @@ export const authenticate = asyncHandler(
  */
 export const optionalAuthenticate = asyncHandler(
 	async (req: Request, _res: Response, next: NextFunction) => {
-		const token = AuthService.extractTokenFromHeader(req.headers.authorization)
+		let token: string | null = null
+
+		if (req.cookies?.accessToken) {
+			token = req.cookies.accessToken as string
+		}
+
+		if (!token) {
+			token = AuthService.extractTokenFromHeader(req.headers.authorization)
+		}
 
 		if (token) {
 			try {

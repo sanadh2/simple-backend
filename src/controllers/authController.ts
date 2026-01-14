@@ -70,6 +70,14 @@ export class AuthController {
 			path: "/",
 		})
 
+		res.cookie("accessToken", tokens.accessToken, {
+			httpOnly: true,
+			secure: process.env.NODE_ENV === "production",
+			sameSite: "strict",
+			maxAge: 15 * 60,
+			path: "/",
+		})
+
 		Logger.setContext({ userId: user._id.toString() })
 		logger.info("User registered successfully", {
 			email: user.email,
@@ -85,9 +93,6 @@ export class AuthController {
 					firstName: user.firstName,
 					lastName: user.lastName,
 					isEmailVerified: user.isEmailVerified,
-				},
-				tokens: {
-					accessToken: tokens.accessToken,
 				},
 			},
 		})
@@ -135,6 +140,14 @@ export class AuthController {
 			path: "/",
 		})
 
+		res.cookie("accessToken", tokens.accessToken, {
+			httpOnly: true,
+			secure: process.env.NODE_ENV === "production",
+			sameSite: "strict",
+			maxAge: 15 * 60,
+			path: "/",
+		})
+
 		Logger.setContext({ userId: user._id.toString() })
 		logger.info("User logged in successfully", {
 			email: user.email,
@@ -150,10 +163,6 @@ export class AuthController {
 					firstName: user.firstName,
 					lastName: user.lastName,
 					isEmailVerified: user.isEmailVerified,
-				},
-				tokens: {
-					accessToken: tokens.accessToken,
-					// Don't send refresh token in response body
 				},
 			},
 		})
@@ -198,6 +207,20 @@ export class AuthController {
 			})
 		}
 
+		res.clearCookie("refreshToken", {
+			httpOnly: true,
+			secure: process.env.NODE_ENV === "production",
+			sameSite: "strict",
+			path: "/",
+		})
+
+		res.clearCookie("accessToken", {
+			httpOnly: true,
+			secure: process.env.NODE_ENV === "production",
+			sameSite: "strict",
+			path: "/",
+		})
+
 		if (req.userId) {
 			logger.info("User logged out", { userId: req.userId })
 		}
@@ -219,6 +242,13 @@ export class AuthController {
 		await AuthService.revokeAllRefreshTokens(req.userId)
 
 		res.clearCookie("refreshToken", {
+			httpOnly: true,
+			secure: process.env.NODE_ENV === "production",
+			sameSite: "strict",
+			path: "/",
+		})
+
+		res.clearCookie("accessToken", {
 			httpOnly: true,
 			secure: process.env.NODE_ENV === "production",
 			sameSite: "strict",
@@ -277,6 +307,14 @@ export class AuthController {
 		}
 
 		const accessToken = await AuthService.refreshAccessToken(refreshToken)
+
+		res.cookie("accessToken", accessToken, {
+			httpOnly: false,
+			secure: process.env.NODE_ENV === "production",
+			sameSite: "strict",
+			maxAge: 15 * 60,
+			path: "/",
+		})
 
 		ResponseHandler.success(res, 200, {
 			message: "Token refreshed successfully",
