@@ -25,6 +25,7 @@
 		"zod": "^4.3.5"
 	},
 	"scripts": {
+		"prod": "npm run build && npm start",
 		"dev": "tsx watch src/index.ts",
 		"build": "tsc",
 		"start": "node dist/index.js",
