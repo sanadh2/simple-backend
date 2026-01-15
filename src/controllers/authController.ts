@@ -1,6 +1,7 @@
-import type { Request, Response } from "express"
+import type { CookieOptions, Request, Response } from "express"
 import { z } from "zod"
 
+import { env } from "../config/env.js"
 import { AppError, asyncHandler } from "../middleware/errorHandler.js"
 import { User } from "../models/User.js"
 import { AuthService } from "../services/authService.js"
@@ -27,6 +28,13 @@ const refreshTokenSchema = z.object({
 const logoutSchema = z.object({
 	refreshToken: z.string().optional(),
 })
+
+const cookieOptions: CookieOptions = {
+	httpOnly: true,
+	secure: env.NODE_ENV === "production",
+	sameSite: env.NODE_ENV === "production" ? "none" : "lax",
+	path: "/",
+}
 
 export class AuthController {
 	/**
@@ -63,19 +71,13 @@ export class AuthController {
 		}
 
 		res.cookie("refreshToken", tokens.refreshToken, {
-			httpOnly: true,
-			secure: process.env.NODE_ENV === "production",
-			sameSite: "strict",
+			...cookieOptions,
 			maxAge: 7 * 24 * 60 * 60 * 1000,
-			path: "/",
 		})
 
 		res.cookie("accessToken", tokens.accessToken, {
-			httpOnly: true,
-			secure: process.env.NODE_ENV === "production",
-			sameSite: "strict",
-			maxAge: 15 * 60,
-			path: "/",
+			...cookieOptions,
+			maxAge: 15 * 60 * 1000,
 		})
 
 		Logger.setContext({ userId: user._id.toString() })
@@ -133,19 +135,13 @@ export class AuthController {
 		}
 
 		res.cookie("refreshToken", tokens.refreshToken, {
-			httpOnly: true,
-			secure: process.env.NODE_ENV === "production",
-			sameSite: "strict",
+			...cookieOptions,
 			maxAge: 7 * 24 * 60 * 60 * 1000,
-			path: "/",
 		})
 
 		res.cookie("accessToken", tokens.accessToken, {
-			httpOnly: true,
-			secure: process.env.NODE_ENV === "production",
-			sameSite: "strict",
-			maxAge: 15 * 60,
-			path: "/",
+			...cookieOptions,
+			maxAge: 15 * 60 * 1000,
 		})
 
 		Logger.setContext({ userId: user._id.toString() })
@@ -308,13 +304,7 @@ export class AuthController {
 
 		const accessToken = await AuthService.refreshAccessToken(refreshToken)
 
-		res.cookie("accessToken", accessToken, {
-			httpOnly: false,
-			secure: process.env.NODE_ENV === "production",
-			sameSite: "strict",
-			maxAge: 15 * 60,
-			path: "/",
-		})
+		res.cookie("accessToken", accessToken, cookieOptions)
 
 		ResponseHandler.success(res, 200, {
 			message: "Token refreshed successfully",
