@@ -35,19 +35,23 @@ export class BookmarkController {
 
 		const validatedData = createBookmarkSchema.parse(req.body)
 
-		const bookmark = await BookmarkService.createBookmark(
+		const result = await BookmarkService.createBookmark(
 			req.userId,
 			validatedData
 		)
 
 		logger.info("Bookmark created", {
 			userId: req.userId,
-			bookmarkId: bookmark._id,
+			bookmarkId: result.bookmark._id,
+			jobId: result.jobId,
 		})
 
 		ResponseHandler.success(res, 201, {
 			message: "Bookmark created successfully",
-			data: bookmark,
+			data: {
+				bookmark: result.bookmark,
+				...(result.jobId && { jobId: result.jobId }),
+			},
 		})
 	})
 

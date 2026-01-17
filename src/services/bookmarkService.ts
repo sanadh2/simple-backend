@@ -22,7 +22,7 @@ export class BookmarkService {
 	static async createBookmark(
 		userId: string,
 		data: CreateBookmarkDTO
-	): Promise<IBookmark> {
+	): Promise<{ bookmark: IBookmark; jobId?: string | undefined }> {
 		const existingBookmark = await Bookmark.findOne({ userId, url: data.url })
 
 		if (existingBookmark) {
@@ -44,6 +44,7 @@ export class BookmarkService {
 
 		const bookmark = await Bookmark.create(bookmarkData)
 
+		let jobId: string | undefined
 		if (data.useAI !== false) {
 			const jobData: BookmarkTagJob = {
 				bookmarkId: bookmark._id.toString(),
@@ -53,12 +54,15 @@ export class BookmarkService {
 				...(data.description && { description: data.description }),
 			}
 
-			await bookmarkQueue.add("generate-tags", jobData, {
+			const job = await bookmarkQueue.add("generate-tags", jobData, {
 				jobId: `bookmark-${bookmark._id.toString()}`,
+				priority: 1,
 			})
+
+			jobId = job.id || `bookmark-${bookmark._id.toString()}`
 		}
 
-		return bookmark
+		return { bookmark, jobId }
 	}
 
 	static async getBookmarks(
