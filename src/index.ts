@@ -5,6 +5,7 @@ import cookieParser from "cookie-parser"
 import cors from "cors"
 import express, { type Request, type Response } from "express"
 import session from "express-session"
+import mongoose from "mongoose"
 import swaggerUi from "swagger-ui-express"
 
 import { connectDatabase } from "./config/database.js"
@@ -61,6 +62,83 @@ app.use(
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 app.use(cookieParser())
+
+// Health check endpoint (before rate limiter for monitoring systems)
+app.get(
+	"/health",
+	asyncHandler(async (_req: Request, res: Response) => {
+		const checks = {
+			server: {
+				status: "healthy",
+				timestamp: new Date().toISOString(),
+			},
+			database: {
+				status: "unknown" as "healthy" | "unhealthy" | "unknown",
+				message: "",
+			},
+			redis: {
+				status: "unknown" as "healthy" | "unhealthy" | "unknown",
+				message: "",
+			},
+		}
+
+		// Check MongoDB connection
+		try {
+			if (
+				mongoose.connection.readyState ===
+					mongoose.ConnectionStates.connected &&
+				mongoose.connection.db
+			) {
+				// Perform a simple ping to ensure connection is active
+				await mongoose.connection.db.admin().ping()
+				checks.database.status = "healthy"
+				checks.database.message = "Connected"
+			} else {
+				checks.database.status = "unhealthy"
+				checks.database.message = `Connection state: ${mongoose.connection.readyState}`
+			}
+		} catch (error) {
+			checks.database.status = "unhealthy"
+			checks.database.message = `Error: ${String(error)}`
+		}
+
+		// Check Redis connection
+		try {
+			const result = await redisConnection.ping()
+			if (result === "PONG") {
+				checks.redis.status = "healthy"
+				checks.redis.message = "Connected"
+			} else {
+				checks.redis.status = "unhealthy"
+				checks.redis.message = "Unexpected response"
+			}
+		} catch (error) {
+			checks.redis.status = "unhealthy"
+			checks.redis.message = `Error: ${String(error)}`
+		}
+
+		// Determine overall health status
+		const allHealthy =
+			checks.server.status === "healthy" &&
+			checks.database.status === "healthy" &&
+			checks.redis.status === "healthy"
+
+		const statusCode = allHealthy ? 200 : 503
+
+		ResponseHandler.success(res, statusCode, {
+			message: allHealthy
+				? "All systems operational"
+				: "Some systems are unhealthy",
+			data: {
+				status: allHealthy ? "healthy" : "degraded",
+				checks,
+				uptime: process.uptime(),
+				environment: env.NODE_ENV,
+			},
+		})
+	})
+)
+
 app.use(globalLimiter)
 
 // Swagger API documentation
