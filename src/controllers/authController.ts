@@ -196,7 +196,7 @@ export class AuthController {
 		})
 
 		if (req.session) {
-			req.session.destroy((err) => {
+			req.session.destroy((err: Error | null) => {
 				if (err) {
 					throw new AppError("Failed to logout", 500)
 				}
@@ -252,7 +252,7 @@ export class AuthController {
 		})
 
 		if (req.session) {
-			req.session.destroy((err) => {
+			req.session.destroy((err: Error | null) => {
 				if (err) {
 					throw new AppError("Failed to logout", 500)
 				}
