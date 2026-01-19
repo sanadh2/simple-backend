@@ -15,10 +15,10 @@ router.use(apiLimiter)
 router.get("/", authenticate, requireEmailVerified, LogController.getLogs)
 
 router.get(
-	"/correlation/:correlationId",
+	"/correlation/:correlation_id",
 	authenticate,
 	requireEmailVerified,
-	LogController.getLogsByCorrelationId
+	LogController.getLogsBycorrelation_id
 )
 
 router.get(

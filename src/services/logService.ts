@@ -118,7 +118,7 @@ export class LogService {
 		}
 	}
 
-	static async getLogsByCorrelationId(correlationId: string): Promise<
+	static async getLogsBycorrelation_id(correlation_id: string): Promise<
 		Array<{
 			timestamp: Date
 			level: string
@@ -128,7 +128,7 @@ export class LogService {
 			meta?: Record<string, unknown>
 		}>
 	> {
-		const logs = await Log.find({ correlation_id: correlationId })
+		const logs = await Log.find({ correlation_id: correlation_id })
 			.sort({ timestamp: 1 })
 			.select("-_id")
 			.lean()

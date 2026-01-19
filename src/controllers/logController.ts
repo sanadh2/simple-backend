@@ -24,8 +24,8 @@ export class LogController {
 		const filters: Record<string, string | Date> = {}
 
 		if (req.query.level) filters.level = req.query.level as string
-		if (req.query.correlationId)
-			filters.correlation_id = req.query.correlationId as string
+		if (req.query.correlation_id)
+			filters.correlation_id = req.query.correlation_id as string
 		if (req.query.userId) filters.user_id = req.query.userId as string
 		if (req.query.message) filters.message = req.query.message as string
 		if (req.query.startDate)
@@ -53,13 +53,13 @@ export class LogController {
 		})
 	})
 
-	static getLogsByCorrelationId = asyncHandler(
+	static getLogsBycorrelation_id = asyncHandler(
 		async (req: Request, res: Response) => {
-			const correlationId = req.params.correlationId
-			if (!correlationId) {
+			const correlation_id = req.params.correlation_id
+			if (!correlation_id) {
 				throw new Error("Correlation ID is required")
 			}
-			const logs = await LogService.getLogsByCorrelationId(correlationId)
+			const logs = await LogService.getLogsBycorrelation_id(correlation_id)
 
 			ResponseHandler.success(res, 200, {
 				message: "Logs retrieved successfully",

@@ -31,7 +31,7 @@ export const requestLoggerMiddleware = (
 		query: Object.keys(query).length > 0 ? query : undefined,
 		hasBody:
 			!!req.body && Object.keys(req.body as Record<string, unknown>).length > 0,
-		correlationId: req.correlationId,
+		correlation_id: req.correlation_id,
 	})
 
 	res.on("finish", () => {
@@ -51,7 +51,7 @@ export const requestLoggerMiddleware = (
 			responseSize,
 			userAgent:
 				typeof userAgentHeader === "string" ? userAgentHeader : undefined,
-			correlationId: req.correlationId,
+			correlation_id: req.correlation_id,
 			userId: (req as Request & { userId?: string }).userId,
 		}
 

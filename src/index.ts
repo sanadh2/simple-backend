@@ -12,7 +12,7 @@ import { connectDatabase } from "./config/database.js"
 import { env } from "./config/env.js"
 import { redisConnection } from "./config/redis.js"
 import { swaggerSpec } from "./config/swagger.js"
-import { correlationIdMiddleware } from "./middleware/correlationId.js"
+import { correlation_idMiddleware } from "./middleware/correlation_id.js"
 import {
 	AppError,
 	asyncHandler,
@@ -36,7 +36,7 @@ await connectDatabase()
 EmailService.initialize()
 startLogWorker()
 
-app.use(correlationIdMiddleware)
+app.use(correlation_idMiddleware)
 app.use(requestLoggerMiddleware)
 
 app.use(

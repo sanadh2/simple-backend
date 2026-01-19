@@ -5,7 +5,7 @@ import { env } from "../config/env.js"
 import { type LogJob, logQueue } from "../queues/logQueue.js"
 
 interface LogContext {
-	correlationId?: string
+	correlation_id?: string
 	userId?: string
 	[key: string]: string | number | boolean | undefined
 }
@@ -25,7 +25,7 @@ class Logger {
 			const logData: LogJob = {
 				timestamp: new Date(),
 				level,
-				correlationId: context.correlationId || "N/A",
+				correlation_id: context.correlation_id || "N/A",
 				message,
 			}
 
@@ -90,8 +90,8 @@ class Logger {
 
 		const parts = [chalk.dim(`[${timestamp}]`), levelColor(levelBadge)]
 
-		if (context.correlationId) {
-			parts.push(chalk.magenta(`[${context.correlationId.slice(0, 8)}]`))
+		if (context.correlation_id) {
+			parts.push(chalk.magenta(`[${context.correlation_id.slice(0, 8)}]`))
 		}
 
 		if (context.userId) {

@@ -5,7 +5,7 @@ import { env } from "../config/env.js"
 export interface LogJob {
 	timestamp: Date
 	level: "info" | "warn" | "error" | "debug"
-	correlationId: string
+	correlation_id: string
 	message: string
 	userId?: string
 	meta?: Record<string, unknown>

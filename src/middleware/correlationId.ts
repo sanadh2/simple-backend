@@ -5,22 +5,22 @@ import { Logger } from "../utils/logger.js"
 
 declare module "express-serve-static-core" {
 	interface Request {
-		correlationId?: string
+		correlation_id?: string
 	}
 }
 
-export const correlationIdMiddleware = (
+export const correlation_idMiddleware = (
 	req: Request,
 	res: Response,
 	next: NextFunction
 ) => {
-	const correlationId =
+	const correlation_id =
 		(req.headers["x-correlation-id"] as string) || randomUUID()
 
-	req.correlationId = correlationId
-	res.setHeader("X-Correlation-ID", correlationId)
+	req.correlation_id = correlation_id
+	res.setHeader("X-Correlation-ID", correlation_id)
 
-	Logger.runWithContext({ correlationId }, () => {
+	Logger.runWithContext({ correlation_id }, () => {
 		next()
 	})
 }
