@@ -53,7 +53,7 @@ const envSchema = z.object({
 	SMTP_USER: z.email("SMTP_USER must be a valid email"),
 	SMTP_PASS: z.string().min(1, "SMTP_PASS is required"),
 	EMAIL_FROM: z.email("EMAIL_FROM must be a valid email"),
-	EMAIL_FROM_NAME: z.string().default("Your App Name"),
+	EMAIL_FROM_NAME: z.string().default("Job Application Tracker"),
 
 	OTP_EXPIRY_MINUTES: z
 		.string()
@@ -65,6 +65,10 @@ const envSchema = z.object({
 		.default("6")
 		.transform((val) => parseInt(val, 10))
 		.pipe(z.number().min(4).max(8)),
+
+	CLOUDINARY_CLOUD_NAME: z.string().min(1, "CLOUDINARY_CLOUD_NAME is required"),
+	CLOUDINARY_API_KEY: z.string().min(1, "CLOUDINARY_API_KEY is required"),
+	CLOUDINARY_API_SECRET: z.string().min(1, "CLOUDINARY_API_SECRET is required"),
 })
 
 export type Env = z.infer<typeof envSchema>

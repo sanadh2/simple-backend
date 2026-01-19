@@ -1,11 +1,9 @@
 import { Router } from "express"
 
 import { AuthController } from "../controllers/index.js"
-import {
-	authenticate,
-	requireEmailVerified,
-} from "../middleware/authMiddleware.js"
+import { authenticate } from "../middleware/authMiddleware.js"
 import { authLimiter, strictLimiter } from "../middleware/rateLimiter.js"
+import { uploadProfilePicture } from "../middleware/uploadMiddleware.js"
 
 const router = Router()
 
@@ -398,6 +396,57 @@ router.post(
 
 /**
  * @openapi
+ * /api/auth/verify-email-registration:
+ *   post:
+ *     tags:
+ *       - Authentication
+ *     summary: Verify email after registration
+ *     description: Verify user's email address using OTP after registration (no tokens generated)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - otp
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: User's email address
+ *               otp:
+ *                 type: string
+ *                 description: The OTP received via email
+ *     responses:
+ *       200:
+ *         description: Email verified successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *       400:
+ *         description: Invalid or expired OTP, or email already verified
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.post(
+	"/verify-email-registration",
+	strictLimiter,
+	AuthController.verifyEmailAfterRegistration
+)
+
+/**
+ * @openapi
  * /api/auth/forgot-password:
  *   post:
  *     tags:
@@ -482,5 +531,68 @@ router.post(
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post("/reset-password", strictLimiter, AuthController.resetPassword)
+
+/**
+ * @openapi
+ * /api/auth/upload-profile-picture:
+ *   post:
+ *     tags:
+ *       - Authentication
+ *     summary: Upload profile picture
+ *     description: Upload a profile picture for the authenticated user
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - profilePicture
+ *             properties:
+ *               profilePicture:
+ *                 type: string
+ *                 format: binary
+ *                 description: Profile picture image file (JPEG, PNG, or WebP, max 5MB)
+ *     responses:
+ *       200:
+ *         description: Profile picture uploaded successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Profile picture uploaded successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       $ref: '#/components/schemas/User'
+ *       400:
+ *         description: No file uploaded or invalid file type
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.post(
+	"/upload-profile-picture",
+	authenticate,
+	authLimiter,
+	uploadProfilePicture.single("profilePicture"),
+	AuthController.uploadProfilePicture
+)
 
 export default router

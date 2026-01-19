@@ -7,6 +7,7 @@ export interface IUser extends Document {
 	firstName: string
 	lastName: string
 	isEmailVerified: boolean
+	profilePicture?: string
 	refreshTokens: string[]
 	tokensInvalidatedAt?: Date
 	emailVerificationOTP?: string
@@ -43,6 +44,10 @@ const userSchema = new Schema<IUser>(
 			type: String,
 			required: [true, "Last name is required"],
 			trim: true,
+		},
+		profilePicture: {
+			type: String,
+			default: null,
 		},
 		isEmailVerified: {
 			type: Boolean,

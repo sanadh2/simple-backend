@@ -99,17 +99,9 @@ export class AuthController {
 			lastName: validatedData.lastName,
 		})
 
-		logger.debug("User created, generating auth tokens", {
+		logger.debug("User created, sending verification OTP", {
 			userId: user._id.toString(),
 			email: user.email,
-		})
-
-		const tokens = await AuthService.generateAuthTokens(user)
-
-		logger.debug("Auth tokens generated", {
-			userId: user._id.toString(),
-			hasAccessToken: !!tokens.accessToken,
-			hasRefreshToken: !!tokens.refreshToken,
 		})
 
 		try {
@@ -134,29 +126,13 @@ export class AuthController {
 			})
 		}
 
-		if (req.session) {
-			req.session.refreshToken = tokens.refreshToken
-			req.session.userId = user._id.toString()
-		}
-
-		res.cookie("refreshToken", tokens.refreshToken, {
-			...cookieOptions,
-			maxAge: 7 * 24 * 60 * 60 * 1000,
-		})
-
-		res.cookie("accessToken", tokens.accessToken, {
-			...cookieOptions,
-			maxAge: 15 * 60 * 1000,
-		})
-
-		Logger.setContext({ userId: user._id.toString() })
-		logger.info("User registered successfully", {
+		logger.info("User registered successfully, verification required", {
 			email: user.email,
 			userId: user._id.toString(),
 		})
 
 		ResponseHandler.success(res, 201, {
-			message: "User registered successfully",
+			message: "Registration successful. Please verify your email.",
 			data: {
 				user: {
 					id: user._id,
@@ -292,6 +268,7 @@ export class AuthController {
 					firstName: user.firstName,
 					lastName: user.lastName,
 					isEmailVerified: user.isEmailVerified,
+					profilePicture: user.profilePicture,
 				},
 			},
 		})
@@ -319,7 +296,7 @@ export class AuthController {
 
 		res.clearCookie("refreshToken", {
 			httpOnly: true,
-			secure: process.env.NODE_ENV === "production",
+			secure: env.NODE_ENV === "production",
 			sameSite: "strict",
 			path: "/",
 		})
@@ -334,14 +311,14 @@ export class AuthController {
 
 		res.clearCookie("refreshToken", {
 			httpOnly: true,
-			secure: process.env.NODE_ENV === "production",
+			secure: env.NODE_ENV === "production",
 			sameSite: "strict",
 			path: "/",
 		})
 
 		res.clearCookie("accessToken", {
 			httpOnly: true,
-			secure: process.env.NODE_ENV === "production",
+			secure: env.NODE_ENV === "production",
 			sameSite: "strict",
 			path: "/",
 		})
@@ -364,14 +341,14 @@ export class AuthController {
 
 		res.clearCookie("refreshToken", {
 			httpOnly: true,
-			secure: process.env.NODE_ENV === "production",
+			secure: env.NODE_ENV === "production",
 			sameSite: "strict",
 			path: "/",
 		})
 
 		res.clearCookie("accessToken", {
 			httpOnly: true,
-			secure: process.env.NODE_ENV === "production",
+			secure: env.NODE_ENV === "production",
 			sameSite: "strict",
 			path: "/",
 		})
@@ -447,10 +424,32 @@ export class AuthController {
 			tokenSource: cookieToken ? "cookie" : bodyToken ? "body" : "session",
 		})
 
+		const decoded = AuthService.verifyRefreshToken(refreshToken)
+		const user = await User.findById(decoded.userId)
+
+		if (!user) {
+			logger.warn("User not found for refresh token", {
+				userId: decoded.userId,
+			})
+			throw new AppError("Invalid refresh token", 401)
+		}
+
+		if (!user.isEmailVerified) {
+			logger.warn("Token refresh attempted for unverified user", {
+				userId: user._id.toString(),
+				email: user.email,
+			})
+			throw new AppError(
+				"Email verification required. Please verify your email to continue.",
+				403
+			)
+		}
+
 		const accessToken = await AuthService.refreshAccessToken(refreshToken)
 
 		logger.debug("Access token refreshed successfully", {
 			hasAccessToken: !!accessToken,
+			userId: user._id.toString(),
 		})
 
 		res.cookie("accessToken", accessToken, cookieOptions)
@@ -479,6 +478,7 @@ export class AuthController {
 					firstName: user.firstName,
 					lastName: user.lastName,
 					isEmailVerified: user.isEmailVerified,
+					profilePicture: user.profilePicture,
 					createdAt: user.createdAt,
 					updatedAt: user.updatedAt,
 				},
@@ -570,6 +570,55 @@ export class AuthController {
 			message: "Email verified successfully",
 		})
 	})
+
+	static verifyEmailAfterRegistration = asyncHandler(
+		async (req: Request, res: Response) => {
+			const validatedData = verifyEmailLoginSchema.parse(req.body)
+
+			const user = await User.findOne({
+				email: validatedData.email,
+			}).select("+emailVerificationOTP +emailVerificationOTPExpiry")
+
+			if (!user) {
+				throw new AppError("User not found", 404)
+			}
+
+			if (user.isEmailVerified) {
+				throw new AppError("Email already verified", 400)
+			}
+
+			const isValid = OTPService.verifyOTP(
+				validatedData.otp,
+				user.emailVerificationOTP,
+				user.emailVerificationOTPExpiry
+			)
+
+			if (!isValid) {
+				logger.warn("Invalid or expired verification OTP for registration", {
+					userId: user._id.toString(),
+					email: validatedData.email,
+				})
+				throw new AppError("Invalid or expired OTP", 400)
+			}
+
+			await User.findByIdAndUpdate(user._id, {
+				isEmailVerified: true,
+				$unset: {
+					emailVerificationOTP: "",
+					emailVerificationOTPExpiry: "",
+				},
+			})
+
+			logger.info("Email verified after registration", {
+				userId: user._id.toString(),
+				email: user.email,
+			})
+
+			ResponseHandler.success(res, 200, {
+				message: "Email verified successfully. Please log in to continue.",
+			})
+		}
+	)
 
 	static verifyEmailAndLogin = asyncHandler(
 		async (req: Request, res: Response) => {
@@ -696,7 +745,6 @@ export class AuthController {
 			throw new AppError("User not found", 404)
 		}
 
-		// Verify OTP
 		const isValid = OTPService.verifyOTP(
 			validatedData.otp,
 			user.passwordResetOTP,
@@ -731,4 +779,72 @@ export class AuthController {
 			message: "Password reset successfully",
 		})
 	})
+
+	static uploadProfilePicture = asyncHandler(
+		async (req: Request, res: Response) => {
+			if (!req.userId) {
+				throw new AppError("Authentication required", 401)
+			}
+
+			if (!req.file) {
+				throw new AppError("No file uploaded", 400)
+			}
+
+			const user = await User.findById(req.userId)
+			if (!user) {
+				throw new AppError("User not found", 404)
+			}
+
+			const { fileUploadService } = await import("../services/index.js")
+
+			if (
+				user.profilePicture &&
+				fileUploadService.isProviderUrl(user.profilePicture)
+			) {
+				try {
+					await fileUploadService.deleteFile(user.profilePicture)
+				} catch (error) {
+					logger.warn("Failed to delete old profile picture", {
+						error: error instanceof Error ? error.message : "Unknown",
+						userId: user._id.toString(),
+					})
+				}
+			}
+
+			if (!req.file.buffer) {
+				throw new AppError("File buffer is missing", 400)
+			}
+
+			const uploadResult = await fileUploadService.uploadFile(
+				req.file.buffer,
+				req.file.originalname,
+				"profile-pictures",
+				user._id.toString()
+			)
+
+			user.profilePicture = uploadResult.url
+			await user.save()
+
+			logger.info("Profile picture uploaded successfully", {
+				userId: user._id.toString(),
+				profilePicture: uploadResult.url,
+			})
+
+			ResponseHandler.success(res, 200, {
+				message: "Profile picture uploaded successfully",
+				data: {
+					user: {
+						id: user._id,
+						email: user.email,
+						firstName: user.firstName,
+						lastName: user.lastName,
+						isEmailVerified: user.isEmailVerified,
+						profilePicture: user.profilePicture,
+						createdAt: user.createdAt,
+						updatedAt: user.updatedAt,
+					},
+				},
+			})
+		}
+	)
 }
