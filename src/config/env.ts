@@ -1,8 +1,6 @@
 import { z } from "zod"
 
-// Define the schema for environment variables
 const envSchema = z.object({
-	// Server Configuration
 	PORT: z
 		.string()
 		.default("3000")
@@ -13,10 +11,8 @@ const envSchema = z.object({
 		.enum(["development", "production", "test"])
 		.default("development"),
 
-	// Database Configuration
 	MONGO_URI: z.url().min(1, "MONGO_URI is required"),
 
-	// Authentication Configuration
 	JWT_ACCESS_SECRET: z
 		.string()
 		.min(32, "JWT_ACCESS_SECRET must be at least 32 characters"),
@@ -26,7 +22,6 @@ const envSchema = z.object({
 	JWT_ACCESS_EXPIRY: z.string().default("15m"),
 	JWT_REFRESH_EXPIRY: z.string().default("7d"),
 
-	// Session Configuration
 	SESSION_SECRET: z
 		.string()
 		.min(32, "SESSION_SECRET must be at least 32 characters"),
@@ -36,7 +31,6 @@ const envSchema = z.object({
 		.transform((val) => parseInt(val, 10))
 		.pipe(z.number().positive()),
 
-	// Redis Configuration (optional, defaults for local development)
 	REDIS_HOST: z.string().default("localhost"),
 	REDIS_PORT: z
 		.string()
@@ -45,9 +39,34 @@ const envSchema = z.object({
 		.pipe(z.number().positive()),
 	REDIS_PASSWORD: z.string().optional(),
 	FRONTEND_URL: z.url().default("http://localhost:4001"),
+
+	SMTP_HOST: z.string().default("smtp.gmail.com"),
+	SMTP_PORT: z
+		.string()
+		.default("587")
+		.transform((val) => parseInt(val, 10))
+		.pipe(z.number().positive()),
+	SMTP_SECURE: z
+		.string()
+		.default("false")
+		.transform((val) => val === "true"),
+	SMTP_USER: z.email("SMTP_USER must be a valid email"),
+	SMTP_PASS: z.string().min(1, "SMTP_PASS is required"),
+	EMAIL_FROM: z.email("EMAIL_FROM must be a valid email"),
+	EMAIL_FROM_NAME: z.string().default("Your App Name"),
+
+	OTP_EXPIRY_MINUTES: z
+		.string()
+		.default("10")
+		.transform((val) => parseInt(val, 10))
+		.pipe(z.number().positive()),
+	OTP_LENGTH: z
+		.string()
+		.default("6")
+		.transform((val) => parseInt(val, 10))
+		.pipe(z.number().min(4).max(8)),
 })
 
-// Export the inferred type
 export type Env = z.infer<typeof envSchema>
 
 /**
@@ -75,5 +94,4 @@ export const validateEnv = (): Env => {
 	}
 }
 
-// Validate and export the environment configuration
 export const env = validateEnv()

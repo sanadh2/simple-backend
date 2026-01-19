@@ -1,7 +1,7 @@
 import { Job, Worker } from "bullmq"
 
 import { env } from "../config/env.js"
-import { Log } from "../models/Log.js"
+import { Log } from "../models/index.js"
 import type { LogJob } from "../queues/logQueue.js"
 
 const connection = {

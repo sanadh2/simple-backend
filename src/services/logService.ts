@@ -1,4 +1,4 @@
-import { Log } from "../models/Log.js"
+import { Log } from "../models/index.js"
 
 interface LogFilters {
 	level?: string

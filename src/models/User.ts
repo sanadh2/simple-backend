@@ -9,6 +9,10 @@ export interface IUser extends Document {
 	isEmailVerified: boolean
 	refreshTokens: string[]
 	tokensInvalidatedAt?: Date
+	emailVerificationOTP?: string
+	emailVerificationOTPExpiry?: Date
+	passwordResetOTP?: string
+	passwordResetOTPExpiry?: Date
 	createdAt: Date
 	updatedAt: Date
 	comparePassword(candidatePassword: string): Promise<boolean>
@@ -28,7 +32,7 @@ const userSchema = new Schema<IUser>(
 			type: String,
 			required: [true, "Password is required"],
 			minlength: [8, "Password must be at least 8 characters"],
-			select: false, // Don't include password in queries by default
+			select: false,
 		},
 		firstName: {
 			type: String,
@@ -47,11 +51,27 @@ const userSchema = new Schema<IUser>(
 		refreshTokens: {
 			type: [String],
 			default: [],
-			select: false, // Don't include refresh tokens in queries by default
+			select: false,
 		},
 		tokensInvalidatedAt: {
 			type: Date,
 			default: null,
+		},
+		emailVerificationOTP: {
+			type: String,
+			select: false,
+		},
+		emailVerificationOTPExpiry: {
+			type: Date,
+			select: false,
+		},
+		passwordResetOTP: {
+			type: String,
+			select: false,
+		},
+		passwordResetOTPExpiry: {
+			type: Date,
+			select: false,
 		},
 	},
 	{
@@ -68,7 +88,6 @@ const userSchema = new Schema<IUser>(
 	}
 )
 
-// Hash password before saving
 userSchema.pre("save", async function () {
 	if (!this.isModified("password")) {
 		return
@@ -78,7 +97,6 @@ userSchema.pre("save", async function () {
 	this.password = await bcrypt.hash(this.password, salt)
 })
 
-// Compare password method
 userSchema.methods.comparePassword = async function (
 	candidatePassword: string
 ): Promise<boolean> {

@@ -1,7 +1,7 @@
 import type { Request, Response } from "express"
 
 import { asyncHandler } from "../middleware/errorHandler.js"
-import { LogService } from "../services/logService.js"
+import { LogService } from "../services/index.js"
 import { logger } from "../utils/logger.js"
 import { ResponseHandler } from "../utils/responseHandler.js"
 

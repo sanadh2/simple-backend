@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from "express"
 
-import { type IUser, User } from "../models/User.js"
-import { AuthService } from "../services/authService.js"
+import { type IUser, User } from "../models/index.js"
+import { AuthService } from "../services/index.js"
 import { Logger, logger } from "../utils/logger.js"
 import { AppError, asyncHandler } from "./errorHandler.js"
 

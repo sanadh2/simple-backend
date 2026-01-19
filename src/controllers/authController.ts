@@ -3,12 +3,11 @@ import { z } from "zod"
 
 import { env } from "../config/env.js"
 import { AppError, asyncHandler } from "../middleware/errorHandler.js"
-import { User } from "../models/User.js"
-import { AuthService } from "../services/authService.js"
+import { User } from "../models/index.js"
+import { AuthService, EmailService, OTPService } from "../services/index.js"
 import { Logger, logger } from "../utils/logger.js"
 import { ResponseHandler } from "../utils/responseHandler.js"
 
-// Validation schemas
 const registerSchema = z.object({
 	email: z.email("Invalid email address"),
 	password: z.string().min(8, "Password must be at least 8 characters"),
@@ -29,6 +28,20 @@ const logoutSchema = z.object({
 	refreshToken: z.string().optional(),
 })
 
+const verifyEmailSchema = z.object({
+	otp: z.string().min(4, "OTP is required"),
+})
+
+const requestPasswordResetSchema = z.object({
+	email: z.email("Invalid email address"),
+})
+
+const resetPasswordSchema = z.object({
+	email: z.email("Invalid email address"),
+	otp: z.string().min(4, "OTP is required"),
+	newPassword: z.string().min(8, "Password must be at least 8 characters"),
+})
+
 const cookieOptions: CookieOptions = {
 	httpOnly: true,
 	secure: env.NODE_ENV === "production",
@@ -37,10 +50,6 @@ const cookieOptions: CookieOptions = {
 }
 
 export class AuthController {
-	/**
-	 * Register a new user
-	 * POST /api/auth/register
-	 */
 	static register = asyncHandler(async (req: Request, res: Response) => {
 		logger.debug("Registration request received", {
 			email: (req.body as { email?: string }).email,
@@ -48,7 +57,6 @@ export class AuthController {
 			hasLastName: !!(req.body as { lastName?: string }).lastName,
 		})
 
-		// Validate request body
 		let validatedData
 		try {
 			validatedData = registerSchema.parse(req.body)
@@ -63,7 +71,6 @@ export class AuthController {
 			throw error
 		}
 
-		// Check if user already exists
 		logger.debug("Checking if user already exists", {
 			email: validatedData.email,
 		})
@@ -80,7 +87,6 @@ export class AuthController {
 			email: validatedData.email,
 		})
 
-		// Create new user
 		const user = await User.create({
 			email: validatedData.email,
 			password: validatedData.password,
@@ -93,7 +99,6 @@ export class AuthController {
 			email: user.email,
 		})
 
-		// Generate auth tokens
 		const tokens = await AuthService.generateAuthTokens(user)
 
 		logger.debug("Auth tokens generated", {
@@ -101,6 +106,28 @@ export class AuthController {
 			hasAccessToken: !!tokens.accessToken,
 			hasRefreshToken: !!tokens.refreshToken,
 		})
+
+		try {
+			const otp = OTPService.generateOTP()
+			const expiry = OTPService.getOTPExpiry()
+
+			await User.findByIdAndUpdate(user._id, {
+				emailVerificationOTP: otp,
+				emailVerificationOTPExpiry: expiry,
+			})
+
+			await EmailService.sendVerificationOTP(user.email, user.firstName, otp)
+
+			logger.info("Verification OTP sent to new user", {
+				userId: user._id.toString(),
+				email: user.email,
+			})
+		} catch (error) {
+			logger.error("Failed to send verification OTP", {
+				error: error instanceof Error ? error.message : "Unknown error",
+				userId: user._id.toString(),
+			})
+		}
 
 		if (req.session) {
 			req.session.refreshToken = tokens.refreshToken
@@ -157,7 +184,6 @@ export class AuthController {
 			throw error
 		}
 
-		// Find user by email (include password field)
 		logger.debug("Looking up user by email", {
 			email: validatedData.email,
 		})
@@ -178,7 +204,6 @@ export class AuthController {
 			email: user.email,
 		})
 
-		// Check password
 		const isPasswordValid = await user.comparePassword(validatedData.password)
 
 		if (!isPasswordValid) {
@@ -194,7 +219,6 @@ export class AuthController {
 			userId: user._id.toString(),
 		})
 
-		// Generate auth tokens
 		const tokens = await AuthService.generateAuthTokens(user)
 
 		logger.debug("Auth tokens generated for login", {
@@ -236,10 +260,6 @@ export class AuthController {
 		})
 	})
 
-	/**
-	 * Logout user
-	 * POST /api/auth/logout
-	 */
 	static logout = asyncHandler(async (req: Request, res: Response) => {
 		const validatedBody = logoutSchema.parse(req.body)
 		const bodyToken = validatedBody.refreshToken
@@ -298,10 +318,6 @@ export class AuthController {
 		})
 	})
 
-	/**
-	 * Logout from all devices
-	 * POST /api/auth/logout-all
-	 */
 	static logoutAll = asyncHandler(async (req: Request, res: Response) => {
 		if (!req.userId) {
 			throw new AppError("Authentication required", 401)
@@ -338,10 +354,6 @@ export class AuthController {
 		})
 	})
 
-	/**
-	 * Refresh access token
-	 * POST /api/auth/refresh
-	 */
 	static refreshToken = asyncHandler(async (req: Request, res: Response) => {
 		logger.debug("Token refresh request received", {
 			hasCookies: !!req.cookies,
@@ -414,10 +426,6 @@ export class AuthController {
 		})
 	})
 
-	/**
-	 * Get current user profile
-	 * GET /api/auth/me
-	 */
 	static getProfile = asyncHandler((_req: Request, res: Response) => {
 		if (!res.req.user) {
 			throw new AppError("Authentication required", 401)
@@ -438,6 +446,175 @@ export class AuthController {
 					updatedAt: user.updatedAt,
 				},
 			},
+		})
+	})
+
+	static sendVerificationOTP = asyncHandler(
+		async (req: Request, res: Response) => {
+			if (!req.userId) {
+				throw new AppError("Authentication required", 401)
+			}
+
+			const user = await User.findById(req.userId)
+			if (!user) {
+				throw new AppError("User not found", 404)
+			}
+
+			if (user.isEmailVerified) {
+				throw new AppError("Email already verified", 400)
+			}
+
+			const otp = OTPService.generateOTP()
+			const expiry = OTPService.getOTPExpiry()
+
+			await User.findByIdAndUpdate(user._id, {
+				emailVerificationOTP: otp,
+				emailVerificationOTPExpiry: expiry,
+			})
+
+			await EmailService.sendVerificationOTP(user.email, user.firstName, otp)
+
+			logger.info("Verification OTP sent", {
+				userId: user._id.toString(),
+				email: user.email,
+			})
+
+			ResponseHandler.success(res, 200, {
+				message: "Verification OTP sent to your email",
+			})
+		}
+	)
+
+	static verifyEmail = asyncHandler(async (req: Request, res: Response) => {
+		if (!req.userId) {
+			throw new AppError("Authentication required", 401)
+		}
+
+		const validatedData = verifyEmailSchema.parse(req.body)
+
+		const user = await User.findById(req.userId).select(
+			"+emailVerificationOTP +emailVerificationOTPExpiry"
+		)
+		if (!user) {
+			throw new AppError("User not found", 404)
+		}
+
+		if (user.isEmailVerified) {
+			throw new AppError("Email already verified", 400)
+		}
+
+		const isValid = OTPService.verifyOTP(
+			validatedData.otp,
+			user.emailVerificationOTP,
+			user.emailVerificationOTPExpiry
+		)
+
+		if (!isValid) {
+			logger.warn("Invalid or expired verification OTP", {
+				userId: user._id.toString(),
+			})
+			throw new AppError("Invalid or expired OTP", 400)
+		}
+
+		await User.findByIdAndUpdate(user._id, {
+			isEmailVerified: true,
+			$unset: {
+				emailVerificationOTP: "",
+				emailVerificationOTPExpiry: "",
+			},
+		})
+
+		logger.info("Email verified successfully", {
+			userId: user._id.toString(),
+			email: user.email,
+		})
+
+		ResponseHandler.success(res, 200, {
+			message: "Email verified successfully",
+		})
+	})
+
+	static requestPasswordReset = asyncHandler(
+		async (req: Request, res: Response) => {
+			const validatedData = requestPasswordResetSchema.parse(req.body)
+
+			const user = await User.findOne({ email: validatedData.email })
+			if (!user) {
+				logger.debug("Password reset requested for non-existent email", {
+					email: validatedData.email,
+				})
+				ResponseHandler.success(res, 200, {
+					message:
+						"If an account exists with this email, a password reset OTP has been sent",
+				})
+				return
+			}
+
+			const otp = OTPService.generateOTP()
+			const expiry = OTPService.getOTPExpiry()
+
+			await User.findByIdAndUpdate(user._id, {
+				passwordResetOTP: otp,
+				passwordResetOTPExpiry: expiry,
+			})
+
+			await EmailService.sendPasswordResetOTP(user.email, user.firstName, otp)
+
+			logger.info("Password reset OTP sent", {
+				userId: user._id.toString(),
+				email: user.email,
+			})
+
+			ResponseHandler.success(res, 200, {
+				message:
+					"If an account exists with this email, a password reset OTP has been sent",
+			})
+		}
+	)
+
+	static resetPassword = asyncHandler(async (req: Request, res: Response) => {
+		const validatedData = resetPasswordSchema.parse(req.body)
+
+		const user = await User.findOne({ email: validatedData.email }).select(
+			"+password +passwordResetOTP +passwordResetOTPExpiry"
+		)
+		if (!user) {
+			throw new AppError("User not found", 404)
+		}
+
+		// Verify OTP
+		const isValid = OTPService.verifyOTP(
+			validatedData.otp,
+			user.passwordResetOTP,
+			user.passwordResetOTPExpiry
+		)
+
+		if (!isValid) {
+			logger.warn("Invalid or expired password reset OTP", {
+				userId: user._id.toString(),
+			})
+			throw new AppError("Invalid or expired OTP", 400)
+		}
+
+		user.password = validatedData.newPassword
+		await user.save()
+
+		await User.findByIdAndUpdate(user._id, {
+			$unset: {
+				passwordResetOTP: "",
+				passwordResetOTPExpiry: "",
+			},
+		})
+
+		await AuthService.revokeAllRefreshTokens(user._id.toString())
+
+		logger.info("Password reset successfully", {
+			userId: user._id.toString(),
+			email: user.email,
+		})
+
+		ResponseHandler.success(res, 200, {
+			message: "Password reset successfully",
 		})
 	})
 }

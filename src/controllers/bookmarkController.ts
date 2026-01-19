@@ -2,7 +2,7 @@ import type { Request, Response } from "express"
 import { z } from "zod"
 
 import { asyncHandler } from "../middleware/errorHandler.js"
-import { BookmarkService } from "../services/bookmarkService.js"
+import { BookmarkService } from "../services/index.js"
 import { logger } from "../utils/logger.js"
 import { ResponseHandler } from "../utils/responseHandler.js"
 

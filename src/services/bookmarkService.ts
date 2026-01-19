@@ -1,7 +1,7 @@
 import mongoose from "mongoose"
 
 import { AppError } from "../middleware/errorHandler.js"
-import { Bookmark, type IBookmark } from "../models/Bookmark.js"
+import { Bookmark, type IBookmark } from "../models/index.js"
 import { logger } from "../utils/logger.js"
 
 export interface CreateBookmarkDTO {

@@ -22,10 +22,13 @@ import {
 import { globalLimiter } from "./middleware/rateLimiter.js"
 import { requestLoggerMiddleware } from "./middleware/requestLogger.js"
 import { logQueue } from "./queues/logQueue.js"
-import analyticsRoutes from "./routes/analyticsRoutes.js"
-import authRoutes from "./routes/authRoutes.js"
-import bookmarkRoutes from "./routes/bookmarkRoutes.js"
-import logRoutes from "./routes/logRoutes.js"
+import {
+	analyticsRoutes,
+	authRoutes,
+	bookmarkRoutes,
+	logRoutes,
+} from "./routes/index.js"
+import { EmailService } from "./services/index.js"
 import { logger } from "./utils/logger.js"
 import { ResponseHandler } from "./utils/responseHandler.js"
 import { startLogWorker, stopLogWorker } from "./workers/logWorker.js"
@@ -35,15 +38,12 @@ const port = env.PORT
 
 await connectDatabase()
 
+EmailService.initialize()
 startLogWorker()
 
-// Correlation ID middleware (must be first)
 app.use(correlationIdMiddleware)
-
-// Request logging middleware
 app.use(requestLoggerMiddleware)
 
-// CORS configuration
 app.use(
 	cors({
 		origin: env.FRONTEND_URL.toString(),
@@ -57,7 +57,6 @@ app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 app.use(cookieParser())
 
-// Health check endpoint (before rate limiter for monitoring systems)
 app.get(
 	"/health",
 	asyncHandler(async (_req: Request, res: Response) => {
@@ -76,14 +75,12 @@ app.get(
 			},
 		}
 
-		// Check MongoDB connection
 		try {
 			if (
 				mongoose.connection.readyState ===
 					mongoose.ConnectionStates.connected &&
 				mongoose.connection.db
 			) {
-				// Perform a simple ping to ensure connection is active
 				await mongoose.connection.db.admin().ping()
 				checks.database.status = "healthy"
 				checks.database.message = "Connected"
@@ -96,7 +93,6 @@ app.get(
 			checks.database.message = `Error: ${String(error)}`
 		}
 
-		// Check Redis connection
 		try {
 			const result = await redisConnection.ping()
 			if (result === "PONG") {
@@ -111,7 +107,6 @@ app.get(
 			checks.redis.message = `Error: ${String(error)}`
 		}
 
-		// Determine overall health status
 		const allHealthy =
 			checks.server.status === "healthy" &&
 			checks.database.status === "healthy" &&
@@ -135,7 +130,6 @@ app.get(
 
 app.use(globalLimiter)
 
-// Swagger API documentation
 app.use(
 	"/api-docs",
 	swaggerUi.serve,
@@ -145,7 +139,6 @@ app.use(
 	})
 )
 
-// Session configuration
 app.use(
 	session({
 		secret: env.SESSION_SECRET,
@@ -154,15 +147,15 @@ app.use(
 		store: MongoStore.create({
 			mongoUrl: env.MONGO_URI,
 			collectionName: "sessions",
-			ttl: env.SESSION_MAX_AGE / 1000, // Convert to seconds
+			ttl: env.SESSION_MAX_AGE / 1000,
 		}),
 		cookie: {
 			maxAge: env.SESSION_MAX_AGE,
 			httpOnly: true,
-			secure: env.NODE_ENV === "production", // Use secure cookies in production
+			secure: env.NODE_ENV === "production",
 			sameSite: "strict",
 		},
-		name: "sessionId", // Custom session cookie name
+		name: "sessionId",
 	})
 )
 
@@ -196,13 +189,8 @@ app.get(
 	})
 )
 
-// Authentication routes
 app.use("/api/auth", authRoutes)
-
-// Analytics routes
 app.use("/api/analytics", analyticsRoutes)
-
-// Log routes
 app.use("/api/logs", logRoutes)
 
 app.use("/api/bookmarks", bookmarkRoutes)

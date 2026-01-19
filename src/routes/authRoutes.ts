@@ -1,6 +1,6 @@
 import { Router } from "express"
 
-import { AuthController } from "../controllers/authController.js"
+import { AuthController } from "../controllers/index.js"
 import { authenticate } from "../middleware/authMiddleware.js"
 import { authLimiter, strictLimiter } from "../middleware/rateLimiter.js"
 
@@ -245,5 +245,178 @@ router.post("/refresh", authLimiter, AuthController.refreshToken)
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get("/me", authenticate, AuthController.getProfile)
+
+/**
+ * @openapi
+ * /api/auth/send-verification-otp:
+ *   post:
+ *     tags:
+ *       - Authentication
+ *     summary: Send email verification OTP
+ *     description: Send a verification OTP to the authenticated user's email
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Verification OTP sent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *       400:
+ *         description: Email already verified
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.post(
+	"/send-verification-otp",
+	authenticate,
+	strictLimiter,
+	AuthController.sendVerificationOTP
+)
+
+/**
+ * @openapi
+ * /api/auth/verify-email:
+ *   post:
+ *     tags:
+ *       - Authentication
+ *     summary: Verify email with OTP
+ *     description: Verify user's email address using the OTP sent to their email
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - otp
+ *             properties:
+ *               otp:
+ *                 type: string
+ *                 description: The OTP received via email
+ *     responses:
+ *       200:
+ *         description: Email verified successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *       400:
+ *         description: Invalid or expired OTP, or email already verified
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.post(
+	"/verify-email",
+	authenticate,
+	strictLimiter,
+	AuthController.verifyEmail
+)
+
+/**
+ * @openapi
+ * /api/auth/forgot-password:
+ *   post:
+ *     tags:
+ *       - Authentication
+ *     summary: Request password reset OTP
+ *     description: Send a password reset OTP to the user's email
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: User's email address
+ *     responses:
+ *       200:
+ *         description: If account exists, password reset OTP has been sent
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ */
+router.post(
+	"/forgot-password",
+	strictLimiter,
+	AuthController.requestPasswordReset
+)
+
+/**
+ * @openapi
+ * /api/auth/reset-password:
+ *   post:
+ *     tags:
+ *       - Authentication
+ *     summary: Reset password with OTP
+ *     description: Reset user's password using the OTP received via email
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - otp
+ *               - newPassword
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: User's email address
+ *               otp:
+ *                 type: string
+ *                 description: The OTP received via email
+ *               newPassword:
+ *                 type: string
+ *                 minLength: 8
+ *                 description: New password (minimum 8 characters)
+ *     responses:
+ *       200:
+ *         description: Password reset successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *       400:
+ *         description: Invalid or expired OTP, or invalid password
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.post("/reset-password", strictLimiter, AuthController.resetPassword)
 
 export default router

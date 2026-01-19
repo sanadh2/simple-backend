@@ -3,7 +3,7 @@ import type { StringValue } from "ms"
 
 import { env } from "../config/env.js"
 import { AppError } from "../middleware/errorHandler.js"
-import { type IUser, User } from "../models/User.js"
+import { type IUser, User } from "../models/index.js"
 import { logger } from "../utils/logger.js"
 
 export interface TokenPayload {

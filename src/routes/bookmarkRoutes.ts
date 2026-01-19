@@ -1,6 +1,6 @@
 import { Router } from "express"
 
-import { BookmarkController } from "../controllers/bookmarkController.js"
+import { BookmarkController } from "../controllers/index.js"
 import { authenticate } from "../middleware/authMiddleware.js"
 import { apiLimiter } from "../middleware/rateLimiter.js"
 

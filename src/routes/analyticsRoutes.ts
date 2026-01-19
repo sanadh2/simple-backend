@@ -1,6 +1,6 @@
 import { Router } from "express"
 
-import { AnalyticsController } from "../controllers/analyticsController.js"
+import { AnalyticsController } from "../controllers/index.js"
 import { authenticate } from "../middleware/authMiddleware.js"
 import { apiLimiter } from "../middleware/rateLimiter.js"
 
