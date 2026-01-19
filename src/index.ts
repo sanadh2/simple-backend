@@ -22,12 +22,7 @@ import {
 import { globalLimiter } from "./middleware/rateLimiter.js"
 import { requestLoggerMiddleware } from "./middleware/requestLogger.js"
 import { logQueue } from "./queues/logQueue.js"
-import {
-	analyticsRoutes,
-	authRoutes,
-	bookmarkRoutes,
-	logRoutes,
-} from "./routes/index.js"
+import { analyticsRoutes, authRoutes, logRoutes } from "./routes/index.js"
 import { EmailService } from "./services/index.js"
 import { logger } from "./utils/logger.js"
 import { ResponseHandler } from "./utils/responseHandler.js"
@@ -192,8 +187,6 @@ app.get(
 app.use("/api/auth", authRoutes)
 app.use("/api/analytics", analyticsRoutes)
 app.use("/api/logs", logRoutes)
-
-app.use("/api/bookmarks", bookmarkRoutes)
 
 app.use(notFoundHandler)
 
