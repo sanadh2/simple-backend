@@ -479,6 +479,119 @@ export class AuthController {
 					lastName: user.lastName,
 					isEmailVerified: user.isEmailVerified,
 					profilePicture: user.profilePicture,
+					currentRole: user.currentRole,
+					yearsOfExperience: user.yearsOfExperience,
+					createdAt: user.createdAt,
+					updatedAt: user.updatedAt,
+				},
+			},
+		})
+	})
+
+	static updateProfile = asyncHandler(async (req: Request, res: Response) => {
+		if (!req.userId) {
+			throw new AppError("Authentication required", 401)
+		}
+
+		const user = await User.findById(req.userId)
+		if (!user) {
+			throw new AppError("User not found", 404)
+		}
+
+		const { firstName, lastName, currentRole, yearsOfExperience } =
+			req.body as {
+				firstName?: string
+				lastName?: string
+				currentRole?: string | null
+				yearsOfExperience?: number | null
+			}
+
+		if (firstName !== undefined) {
+			if (
+				!firstName ||
+				typeof firstName !== "string" ||
+				firstName.trim().length === 0
+			) {
+				throw new AppError(
+					"First name is required and must be a non-empty string",
+					400
+				)
+			}
+			user.firstName = firstName.trim()
+		}
+
+		if (lastName !== undefined) {
+			if (
+				!lastName ||
+				typeof lastName !== "string" ||
+				lastName.trim().length === 0
+			) {
+				throw new AppError(
+					"Last name is required and must be a non-empty string",
+					400
+				)
+			}
+			user.lastName = lastName.trim()
+		}
+
+		if (currentRole !== undefined) {
+			if (
+				currentRole !== null &&
+				(typeof currentRole !== "string" || currentRole.trim().length === 0)
+			) {
+				throw new AppError(
+					"Current role must be a non-empty string or null",
+					400
+				)
+			}
+			if (currentRole === null || currentRole === "") {
+				const userDoc = user as unknown as Record<string, unknown>
+				delete userDoc.currentRole
+			} else {
+				user.currentRole = currentRole.trim()
+			}
+		}
+
+		if (yearsOfExperience !== undefined) {
+			if (yearsOfExperience !== null) {
+				const years = Number(yearsOfExperience)
+				if (isNaN(years) || years < 0) {
+					throw new AppError(
+						"Years of experience must be a non-negative number",
+						400
+					)
+				}
+				user.yearsOfExperience = years
+			} else {
+				const userDoc = user as unknown as Record<string, unknown>
+				delete userDoc.yearsOfExperience
+			}
+		}
+
+		await user.save()
+
+		logger.info("User profile updated", {
+			userId: user._id.toString(),
+			updatedFields: {
+				firstName: firstName !== undefined,
+				lastName: lastName !== undefined,
+				currentRole: currentRole !== undefined,
+				yearsOfExperience: yearsOfExperience !== undefined,
+			},
+		})
+
+		ResponseHandler.success(res, 200, {
+			message: "Profile updated successfully",
+			data: {
+				user: {
+					id: user._id,
+					email: user.email,
+					firstName: user.firstName,
+					lastName: user.lastName,
+					isEmailVerified: user.isEmailVerified,
+					profilePicture: user.profilePicture,
+					currentRole: user.currentRole,
+					yearsOfExperience: user.yearsOfExperience,
 					createdAt: user.createdAt,
 					updatedAt: user.updatedAt,
 				},

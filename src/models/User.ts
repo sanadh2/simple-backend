@@ -8,6 +8,8 @@ export interface IUser extends Document {
 	lastName: string
 	isEmailVerified: boolean
 	profilePicture?: string
+	currentRole?: string
+	yearsOfExperience?: number
 	refreshTokens: string[]
 	tokensInvalidatedAt?: Date
 	emailVerificationOTP?: string
@@ -48,6 +50,16 @@ const userSchema = new Schema<IUser>(
 		profilePicture: {
 			type: String,
 			default: null,
+		},
+		currentRole: {
+			type: String,
+			default: null,
+			trim: true,
+		},
+		yearsOfExperience: {
+			type: Number,
+			default: null,
+			min: [0, "Years of experience cannot be negative"],
 		},
 		isEmailVerified: {
 			type: Boolean,

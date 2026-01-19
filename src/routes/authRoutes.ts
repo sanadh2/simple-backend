@@ -254,6 +254,77 @@ router.get("/me", authenticate, AuthController.getProfile)
 
 /**
  * @openapi
+ * /api/auth/update-profile:
+ *   put:
+ *     tags:
+ *       - Authentication
+ *     summary: Update user profile
+ *     description: Update authenticated user's profile information (name, current role, years of experience)
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               firstName:
+ *                 type: string
+ *                 description: User's first name
+ *               lastName:
+ *                 type: string
+ *                 description: User's last name
+ *               currentRole:
+ *                 type: string
+ *                 nullable: true
+ *                 description: User's current role/job title
+ *               yearsOfExperience:
+ *                 type: number
+ *                 nullable: true
+ *                 minimum: 0
+ *                 description: Years of professional experience
+ *     responses:
+ *       200:
+ *         description: Profile updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Profile updated successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Invalid input
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.put(
+	"/update-profile",
+	authenticate,
+	authLimiter,
+	AuthController.updateProfile
+)
+
+/**
+ * @openapi
  * /api/auth/send-verification-otp:
  *   post:
  *     tags:
