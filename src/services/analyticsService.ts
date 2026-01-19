@@ -83,10 +83,10 @@ export class AnalyticsService {
 					_id: null,
 					totalUsers: { $sum: 1 },
 					verifiedUsers: {
-						$sum: { $cond: [{ $eq: ["$isEmailVerified", true] }, 1, 0] },
+						$sum: { $cond: [{ $eq: ["$is_email_verified", true] }, 1, 0] },
 					},
 					unverifiedUsers: {
-						$sum: { $cond: [{ $eq: ["$isEmailVerified", false] }, 1, 0] },
+						$sum: { $cond: [{ $eq: ["$is_email_verified", false] }, 1, 0] },
 					},
 				},
 			},
@@ -150,8 +150,8 @@ export class AnalyticsService {
 					users: {
 						$push: {
 							email: "$email",
-							name: { $concat: ["$firstName", " ", "$lastName"] },
-							isVerified: "$isEmailVerified",
+							name: { $concat: ["$first_name", " ", "$last_name"] },
+							isVerified: "$is_email_verified",
 						},
 					},
 				},
@@ -175,9 +175,9 @@ export class AnalyticsService {
 			{
 				$project: {
 					email: 1,
-					firstName: 1,
-					lastName: 1,
-					sessionCount: { $size: { $ifNull: ["$refreshTokens", []] } },
+					first_name: 1,
+					last_name: 1,
+					sessionCount: { $size: { $ifNull: ["$refresh_tokens", []] } },
 				},
 			},
 			{
@@ -220,7 +220,7 @@ export class AnalyticsService {
 						{ $limit: 10 },
 						{
 							$project: {
-								fullName: { $concat: ["$firstName", " ", "$lastName"] },
+								fullName: { $concat: ["$first_name", " ", "$last_name"] },
 								email: 1,
 								sessionCount: 1,
 							},
@@ -258,7 +258,7 @@ export class AnalyticsService {
 		return await User.aggregate([
 			{
 				$addFields: {
-					fullName: { $concat: ["$firstName", " ", "$lastName"] },
+					fullName: { $concat: ["$first_name", " ", "$last_name"] },
 				},
 			},
 			{
@@ -270,7 +270,7 @@ export class AnalyticsService {
 				$project: {
 					fullName: 1,
 					email: 1,
-					isEmailVerified: 1,
+					is_email_verified: 1,
 					createdAt: 1,
 				},
 			},
@@ -308,9 +308,9 @@ export class AnalyticsService {
 						{ $limit: limit },
 						{
 							$project: {
-								fullName: { $concat: ["$firstName", " ", "$lastName"] },
+								fullName: { $concat: ["$first_name", " ", "$last_name"] },
 								email: 1,
-								isEmailVerified: 1,
+								is_email_verified: 1,
 								createdAt: 1,
 							},
 						},
@@ -351,16 +351,16 @@ export class AnalyticsService {
 				$match: {
 					createdAt: { $lt: inactiveDate },
 					$or: [
-						{ refreshTokens: { $exists: false } },
-						{ refreshTokens: { $size: 0 } },
+						{ refresh_tokens: { $exists: false } },
+						{ refresh_tokens: { $size: 0 } },
 					],
 				},
 			},
 			{
 				$project: {
-					fullName: { $concat: ["$firstName", " ", "$lastName"] },
+					fullName: { $concat: ["$first_name", " ", "$last_name"] },
 					email: 1,
-					isEmailVerified: 1,
+					is_email_verified: 1,
 					createdAt: 1,
 					daysSinceCreation: {
 						$round: [
@@ -434,7 +434,7 @@ export class AnalyticsService {
 						$dateToString: { format: "%Y-%m", date: "$createdAt" },
 					},
 					hasActiveSessions: {
-						$gt: [{ $size: { $ifNull: ["$refreshTokens", []] } }, 0],
+						$gt: [{ $size: { $ifNull: ["$refresh_tokens", []] } }, 0],
 					},
 				},
 			},
@@ -477,13 +477,13 @@ export class AnalyticsService {
 		return await User.aggregate([
 			{
 				$match: {
-					isEmailVerified: true,
+					is_email_verified: true,
 					createdAt: { $gte: ninetyDaysAgo },
 				},
 			},
 			{
 				$addFields: {
-					sessionCount: { $size: { $ifNull: ["$refreshTokens", []] } },
+					sessionCount: { $size: { $ifNull: ["$refresh_tokens", []] } },
 				},
 			},
 			{
@@ -493,7 +493,7 @@ export class AnalyticsService {
 			},
 			{
 				$project: {
-					fullName: { $concat: ["$firstName", " ", "$lastName"] },
+					fullName: { $concat: ["$first_name", " ", "$last_name"] },
 					email: 1,
 					sessionCount: 1,
 					createdAt: 1,

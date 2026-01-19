@@ -4,18 +4,18 @@ import mongoose, { Document, Schema } from "mongoose"
 export interface IUser extends Document {
 	email: string
 	password: string
-	firstName: string
-	lastName: string
-	isEmailVerified: boolean
-	profilePicture?: string
-	currentRole?: string
-	yearsOfExperience?: number
-	refreshTokens: string[]
-	tokensInvalidatedAt?: Date
-	emailVerificationOTP?: string
-	emailVerificationOTPExpiry?: Date
-	passwordResetOTP?: string
-	passwordResetOTPExpiry?: Date
+	first_name: string
+	last_name: string
+	is_email_verified: boolean
+	profile_picture?: string
+	current_role?: string
+	years_of_experience?: number
+	refresh_tokens: string[]
+	tokens_invalidated_at?: Date
+	email_verification_otp?: string
+	email_verification_otp_expiry?: Date
+	password_reset_otp?: string
+	password_reset_otp_expiry?: Date
 	createdAt: Date
 	updatedAt: Date
 	comparePassword(candidatePassword: string): Promise<boolean>
@@ -37,56 +37,56 @@ const userSchema = new Schema<IUser>(
 			minlength: [8, "Password must be at least 8 characters"],
 			select: false,
 		},
-		firstName: {
+		first_name: {
 			type: String,
 			required: [true, "First name is required"],
 			trim: true,
 		},
-		lastName: {
+		last_name: {
 			type: String,
 			required: [true, "Last name is required"],
 			trim: true,
 		},
-		profilePicture: {
+		profile_picture: {
 			type: String,
 			default: null,
 		},
-		currentRole: {
+		current_role: {
 			type: String,
 			default: null,
 			trim: true,
 		},
-		yearsOfExperience: {
+		years_of_experience: {
 			type: Number,
 			default: null,
 			min: [0, "Years of experience cannot be negative"],
 		},
-		isEmailVerified: {
+		is_email_verified: {
 			type: Boolean,
 			default: false,
 		},
-		refreshTokens: {
+		refresh_tokens: {
 			type: [String],
 			default: [],
 			select: false,
 		},
-		tokensInvalidatedAt: {
+		tokens_invalidated_at: {
 			type: Date,
 			default: null,
 		},
-		emailVerificationOTP: {
+		email_verification_otp: {
 			type: String,
 			select: false,
 		},
-		emailVerificationOTPExpiry: {
+		email_verification_otp_expiry: {
 			type: Date,
 			select: false,
 		},
-		passwordResetOTP: {
+		password_reset_otp: {
 			type: String,
 			select: false,
 		},
-		passwordResetOTPExpiry: {
+		password_reset_otp_expiry: {
 			type: Date,
 			select: false,
 		},
@@ -97,7 +97,7 @@ const userSchema = new Schema<IUser>(
 			transform: (_doc, ret: Record<string, unknown>) => {
 				const cleaned = { ...ret }
 				delete cleaned.password
-				delete cleaned.refreshTokens
+				delete cleaned.refresh_tokens
 				delete cleaned.__v
 				return cleaned
 			},

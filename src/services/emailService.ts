@@ -114,7 +114,7 @@ export class EmailService {
 
 	static async sendVerificationOTP(
 		email: string,
-		firstName: string,
+		first_name: string,
 		otp: string
 	): Promise<void> {
 		await this.sendEmail({
@@ -122,7 +122,7 @@ export class EmailService {
 			subject: "Verify Your Email Address",
 			template: "email-verification",
 			context: {
-				firstName,
+				first_name,
 				otp,
 				expiryMinutes: env.OTP_EXPIRY_MINUTES,
 				appName: env.EMAIL_FROM_NAME,
@@ -132,7 +132,7 @@ export class EmailService {
 
 	static async sendPasswordResetOTP(
 		email: string,
-		firstName: string,
+		first_name: string,
 		otp: string
 	): Promise<void> {
 		await this.sendEmail({
@@ -140,7 +140,7 @@ export class EmailService {
 			subject: "Reset Your Password",
 			template: "password-reset",
 			context: {
-				firstName,
+				first_name,
 				otp,
 				expiryMinutes: env.OTP_EXPIRY_MINUTES,
 				appName: env.EMAIL_FROM_NAME,

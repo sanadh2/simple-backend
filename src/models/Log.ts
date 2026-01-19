@@ -3,9 +3,9 @@ import mongoose, { Document, Schema } from "mongoose"
 export interface ILog extends Document {
 	timestamp: Date
 	level: "info" | "warn" | "error" | "debug"
-	correlationId: string
+	correlation_id: string
 	message: string
-	userId?: string
+	user_id?: string
 	meta?: Record<string, unknown>
 	createdAt: Date
 }
@@ -23,7 +23,7 @@ const logSchema = new Schema<ILog>(
 			enum: ["info", "warn", "error", "debug"],
 			index: true,
 		},
-		correlationId: {
+		correlation_id: {
 			type: String,
 			required: true,
 			index: true,
@@ -32,7 +32,7 @@ const logSchema = new Schema<ILog>(
 			type: String,
 			required: true,
 		},
-		userId: {
+		user_id: {
 			type: String,
 			index: true,
 		},
@@ -48,6 +48,6 @@ const logSchema = new Schema<ILog>(
 
 logSchema.index({ timestamp: -1 })
 logSchema.index({ level: 1, timestamp: -1 })
-logSchema.index({ correlationId: 1, timestamp: 1 })
+logSchema.index({ correlation_id: 1, timestamp: 1 })
 
 export const Log = mongoose.model<ILog>("Log", logSchema)

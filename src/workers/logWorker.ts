@@ -19,9 +19,9 @@ export const logWorker = new Worker<LogJob>(
 			await Log.create({
 				timestamp: data.timestamp,
 				level: data.level,
-				correlationId: data.correlationId,
+				correlation_id: data.correlationId,
 				message: data.message,
-				...(data.userId && { userId: data.userId }),
+				...(data.userId && { user_id: data.userId }),
 				...(data.meta && { meta: data.meta }),
 			})
 		} catch (error) {

@@ -11,8 +11,8 @@ import { ResponseHandler } from "../utils/responseHandler.js"
 const registerSchema = z.object({
 	email: z.email("Invalid email address"),
 	password: z.string().min(8, "Password must be at least 8 characters"),
-	firstName: z.string().min(1, "First name is required").trim(),
-	lastName: z.string().min(1, "Last name is required").trim(),
+	first_name: z.string().min(1, "First name is required").trim(),
+	last_name: z.string().min(1, "Last name is required").trim(),
 })
 
 const loginSchema = z.object({
@@ -58,8 +58,8 @@ export class AuthController {
 	static register = asyncHandler(async (req: Request, res: Response) => {
 		logger.debug("Registration request received", {
 			email: (req.body as { email?: string }).email,
-			hasFirstName: !!(req.body as { firstName?: string }).firstName,
-			hasLastName: !!(req.body as { lastName?: string }).lastName,
+			hasfirst_name: !!(req.body as { first_name?: string }).first_name,
+			haslast_name: !!(req.body as { last_name?: string }).last_name,
 		})
 
 		let validatedData
@@ -95,8 +95,8 @@ export class AuthController {
 		const user = await User.create({
 			email: validatedData.email,
 			password: validatedData.password,
-			firstName: validatedData.firstName,
-			lastName: validatedData.lastName,
+			first_name: validatedData.first_name,
+			last_name: validatedData.last_name,
 		})
 
 		logger.debug("User created, sending verification OTP", {
@@ -109,11 +109,11 @@ export class AuthController {
 			const expiry = OTPService.getOTPExpiry()
 
 			await User.findByIdAndUpdate(user._id, {
-				emailVerificationOTP: otp,
-				emailVerificationOTPExpiry: expiry,
+				email_verification_otp: otp,
+				email_verification_otp_expiry: expiry,
 			})
 
-			await EmailService.sendVerificationOTP(user.email, user.firstName, otp)
+			await EmailService.sendVerificationOTP(user.email, user.first_name, otp)
 
 			logger.info("Verification OTP sent to new user", {
 				userId: user._id.toString(),
@@ -137,9 +137,9 @@ export class AuthController {
 				user: {
 					id: user._id,
 					email: user.email,
-					firstName: user.firstName,
-					lastName: user.lastName,
-					isEmailVerified: user.isEmailVerified,
+					first_name: user.first_name,
+					last_name: user.last_name,
+					is_email_verified: user.is_email_verified,
 				},
 			},
 		})
@@ -196,7 +196,7 @@ export class AuthController {
 			throw new AppError("Invalid email or password", 401)
 		}
 
-		if (!user.isEmailVerified) {
+		if (!user.is_email_verified) {
 			logger.info("Login attempt with unverified email, sending OTP", {
 				email: user.email,
 				userId: user._id.toString(),
@@ -206,11 +206,11 @@ export class AuthController {
 			const otpExpiry = OTPService.getOTPExpiry()
 
 			await User.findByIdAndUpdate(user._id, {
-				emailVerificationOTP: otp,
-				emailVerificationOTPExpiry: otpExpiry,
+				email_verification_otp: otp,
+				email_verification_otp_expiry: otpExpiry,
 			})
 
-			await EmailService.sendVerificationOTP(user.email, user.firstName, otp)
+			await EmailService.sendVerificationOTP(user.email, user.first_name, otp)
 
 			logger.info("Verification OTP sent for login", {
 				userId: user._id.toString(),
@@ -265,10 +265,10 @@ export class AuthController {
 				user: {
 					id: user._id,
 					email: user.email,
-					firstName: user.firstName,
-					lastName: user.lastName,
-					isEmailVerified: user.isEmailVerified,
-					profilePicture: user.profilePicture,
+					first_name: user.first_name,
+					last_name: user.last_name,
+					is_email_verified: user.is_email_verified,
+					profile_picture: user.profile_picture,
 				},
 			},
 		})
@@ -434,7 +434,7 @@ export class AuthController {
 			throw new AppError("Invalid refresh token", 401)
 		}
 
-		if (!user.isEmailVerified) {
+		if (!user.is_email_verified) {
 			logger.warn("Token refresh attempted for unverified user", {
 				userId: user._id.toString(),
 				email: user.email,
@@ -475,12 +475,12 @@ export class AuthController {
 				user: {
 					id: user._id,
 					email: user.email,
-					firstName: user.firstName,
-					lastName: user.lastName,
-					isEmailVerified: user.isEmailVerified,
-					profilePicture: user.profilePicture,
-					currentRole: user.currentRole,
-					yearsOfExperience: user.yearsOfExperience,
+					first_name: user.first_name,
+					last_name: user.last_name,
+					is_email_verified: user.is_email_verified,
+					profile_picture: user.profile_picture,
+					current_role: user.current_role,
+					years_of_experience: user.years_of_experience,
 					createdAt: user.createdAt,
 					updatedAt: user.updatedAt,
 				},
@@ -498,40 +498,40 @@ export class AuthController {
 			throw new AppError("User not found", 404)
 		}
 
-		const { firstName, lastName, currentRole, yearsOfExperience } =
+		const { first_name, last_name, currentRole, yearsOfExperience } =
 			req.body as {
-				firstName?: string
-				lastName?: string
+				first_name?: string
+				last_name?: string
 				currentRole?: string | null
 				yearsOfExperience?: number | null
 			}
 
-		if (firstName !== undefined) {
+		if (first_name !== undefined) {
 			if (
-				!firstName ||
-				typeof firstName !== "string" ||
-				firstName.trim().length === 0
+				!first_name ||
+				typeof first_name !== "string" ||
+				first_name.trim().length === 0
 			) {
 				throw new AppError(
 					"First name is required and must be a non-empty string",
 					400
 				)
 			}
-			user.firstName = firstName.trim()
+			user.first_name = first_name.trim()
 		}
 
-		if (lastName !== undefined) {
+		if (last_name !== undefined) {
 			if (
-				!lastName ||
-				typeof lastName !== "string" ||
-				lastName.trim().length === 0
+				!last_name ||
+				typeof last_name !== "string" ||
+				last_name.trim().length === 0
 			) {
 				throw new AppError(
 					"Last name is required and must be a non-empty string",
 					400
 				)
 			}
-			user.lastName = lastName.trim()
+			user.last_name = last_name.trim()
 		}
 
 		if (currentRole !== undefined) {
@@ -546,9 +546,9 @@ export class AuthController {
 			}
 			if (currentRole === null || currentRole === "") {
 				const userDoc = user as unknown as Record<string, unknown>
-				delete userDoc.currentRole
+				delete userDoc.current_role
 			} else {
-				user.currentRole = currentRole.trim()
+				user.current_role = currentRole.trim()
 			}
 		}
 
@@ -561,10 +561,10 @@ export class AuthController {
 						400
 					)
 				}
-				user.yearsOfExperience = years
+				user.years_of_experience = years
 			} else {
 				const userDoc = user as unknown as Record<string, unknown>
-				delete userDoc.yearsOfExperience
+				delete userDoc.years_of_experience
 			}
 		}
 
@@ -573,8 +573,8 @@ export class AuthController {
 		logger.info("User profile updated", {
 			userId: user._id.toString(),
 			updatedFields: {
-				firstName: firstName !== undefined,
-				lastName: lastName !== undefined,
+				first_name: first_name !== undefined,
+				last_name: last_name !== undefined,
 				currentRole: currentRole !== undefined,
 				yearsOfExperience: yearsOfExperience !== undefined,
 			},
@@ -586,12 +586,12 @@ export class AuthController {
 				user: {
 					id: user._id,
 					email: user.email,
-					firstName: user.firstName,
-					lastName: user.lastName,
-					isEmailVerified: user.isEmailVerified,
-					profilePicture: user.profilePicture,
-					currentRole: user.currentRole,
-					yearsOfExperience: user.yearsOfExperience,
+					first_name: user.first_name,
+					last_name: user.last_name,
+					is_email_verified: user.is_email_verified,
+					profile_picture: user.profile_picture,
+					current_role: user.current_role,
+					years_of_experience: user.years_of_experience,
 					createdAt: user.createdAt,
 					updatedAt: user.updatedAt,
 				},
@@ -610,7 +610,7 @@ export class AuthController {
 				throw new AppError("User not found", 404)
 			}
 
-			if (user.isEmailVerified) {
+			if (user.is_email_verified) {
 				throw new AppError("Email already verified", 400)
 			}
 
@@ -618,11 +618,11 @@ export class AuthController {
 			const expiry = OTPService.getOTPExpiry()
 
 			await User.findByIdAndUpdate(user._id, {
-				emailVerificationOTP: otp,
-				emailVerificationOTPExpiry: expiry,
+				email_verification_otp: otp,
+				email_verification_otp_expiry: expiry,
 			})
 
-			await EmailService.sendVerificationOTP(user.email, user.firstName, otp)
+			await EmailService.sendVerificationOTP(user.email, user.first_name, otp)
 
 			logger.info("Verification OTP sent", {
 				userId: user._id.toString(),
@@ -643,20 +643,20 @@ export class AuthController {
 		const validatedData = verifyEmailSchema.parse(req.body)
 
 		const user = await User.findById(req.userId).select(
-			"+emailVerificationOTP +emailVerificationOTPExpiry"
+			"+email_verification_otp +email_verification_otp_expiry"
 		)
 		if (!user) {
 			throw new AppError("User not found", 404)
 		}
 
-		if (user.isEmailVerified) {
+		if (user.is_email_verified) {
 			throw new AppError("Email already verified", 400)
 		}
 
 		const isValid = OTPService.verifyOTP(
 			validatedData.otp,
-			user.emailVerificationOTP,
-			user.emailVerificationOTPExpiry
+			user.email_verification_otp,
+			user.email_verification_otp_expiry
 		)
 
 		if (!isValid) {
@@ -667,10 +667,10 @@ export class AuthController {
 		}
 
 		await User.findByIdAndUpdate(user._id, {
-			isEmailVerified: true,
+			is_email_verified: true,
 			$unset: {
-				emailVerificationOTP: "",
-				emailVerificationOTPExpiry: "",
+				email_verification_otp: "",
+				email_verification_otp_expiry: "",
 			},
 		})
 
@@ -690,20 +690,20 @@ export class AuthController {
 
 			const user = await User.findOne({
 				email: validatedData.email,
-			}).select("+emailVerificationOTP +emailVerificationOTPExpiry")
+			}).select("+email_verification_otp +email_verification_otp_expiry")
 
 			if (!user) {
 				throw new AppError("User not found", 404)
 			}
 
-			if (user.isEmailVerified) {
+			if (user.is_email_verified) {
 				throw new AppError("Email already verified", 400)
 			}
 
 			const isValid = OTPService.verifyOTP(
 				validatedData.otp,
-				user.emailVerificationOTP,
-				user.emailVerificationOTPExpiry
+				user.email_verification_otp,
+				user.email_verification_otp_expiry
 			)
 
 			if (!isValid) {
@@ -715,10 +715,10 @@ export class AuthController {
 			}
 
 			await User.findByIdAndUpdate(user._id, {
-				isEmailVerified: true,
+				is_email_verified: true,
 				$unset: {
-					emailVerificationOTP: "",
-					emailVerificationOTPExpiry: "",
+					email_verification_otp: "",
+					email_verification_otp_expiry: "",
 				},
 			})
 
@@ -739,20 +739,20 @@ export class AuthController {
 
 			const user = await User.findOne({
 				email: validatedData.email,
-			}).select("+emailVerificationOTP +emailVerificationOTPExpiry")
+			}).select("+email_verification_otp +email_verification_otp_expiry")
 
 			if (!user) {
 				throw new AppError("User not found", 404)
 			}
 
-			if (user.isEmailVerified) {
+			if (user.is_email_verified) {
 				throw new AppError("Email already verified", 400)
 			}
 
 			const isValid = OTPService.verifyOTP(
 				validatedData.otp,
-				user.emailVerificationOTP,
-				user.emailVerificationOTPExpiry
+				user.email_verification_otp,
+				user.email_verification_otp_expiry
 			)
 
 			if (!isValid) {
@@ -764,10 +764,10 @@ export class AuthController {
 			}
 
 			await User.findByIdAndUpdate(user._id, {
-				isEmailVerified: true,
+				is_email_verified: true,
 				$unset: {
-					emailVerificationOTP: "",
-					emailVerificationOTPExpiry: "",
+					email_verification_otp: "",
+					email_verification_otp_expiry: "",
 				},
 			})
 
@@ -801,9 +801,9 @@ export class AuthController {
 					user: {
 						id: user._id,
 						email: user.email,
-						firstName: user.firstName,
-						lastName: user.lastName,
-						isEmailVerified: true,
+						first_name: user.first_name,
+						last_name: user.last_name,
+						is_email_verified: true,
 					},
 				},
 			})
@@ -830,11 +830,11 @@ export class AuthController {
 			const expiry = OTPService.getOTPExpiry()
 
 			await User.findByIdAndUpdate(user._id, {
-				passwordResetOTP: otp,
-				passwordResetOTPExpiry: expiry,
+				password_reset_otp: otp,
+				password_reset_otp_expiry: expiry,
 			})
 
-			await EmailService.sendPasswordResetOTP(user.email, user.firstName, otp)
+			await EmailService.sendPasswordResetOTP(user.email, user.first_name, otp)
 
 			logger.info("Password reset OTP sent", {
 				userId: user._id.toString(),
@@ -852,7 +852,7 @@ export class AuthController {
 		const validatedData = resetPasswordSchema.parse(req.body)
 
 		const user = await User.findOne({ email: validatedData.email }).select(
-			"+password +passwordResetOTP +passwordResetOTPExpiry"
+			"+password +password_reset_otp +password_reset_otp_expiry"
 		)
 		if (!user) {
 			throw new AppError("User not found", 404)
@@ -860,8 +860,8 @@ export class AuthController {
 
 		const isValid = OTPService.verifyOTP(
 			validatedData.otp,
-			user.passwordResetOTP,
-			user.passwordResetOTPExpiry
+			user.password_reset_otp,
+			user.password_reset_otp_expiry
 		)
 
 		if (!isValid) {
@@ -887,8 +887,8 @@ export class AuthController {
 
 		await User.findByIdAndUpdate(user._id, {
 			$unset: {
-				passwordResetOTP: "",
-				passwordResetOTPExpiry: "",
+				password_reset_otp: "",
+				password_reset_otp_expiry: "",
 			},
 		})
 
@@ -922,11 +922,11 @@ export class AuthController {
 			const { fileUploadService } = await import("../services/index.js")
 
 			if (
-				user.profilePicture &&
-				fileUploadService.isProviderUrl(user.profilePicture)
+				user.profile_picture &&
+				fileUploadService.isProviderUrl(user.profile_picture)
 			) {
 				try {
-					await fileUploadService.deleteFile(user.profilePicture)
+					await fileUploadService.deleteFile(user.profile_picture)
 				} catch (error) {
 					logger.warn("Failed to delete old profile picture", {
 						error: error instanceof Error ? error.message : "Unknown",
@@ -946,12 +946,12 @@ export class AuthController {
 				user._id.toString()
 			)
 
-			user.profilePicture = uploadResult.url
+			user.profile_picture = uploadResult.url
 			await user.save()
 
 			logger.info("Profile picture uploaded successfully", {
 				userId: user._id.toString(),
-				profilePicture: uploadResult.url,
+				profile_picture: uploadResult.url,
 			})
 
 			ResponseHandler.success(res, 200, {
@@ -960,10 +960,10 @@ export class AuthController {
 					user: {
 						id: user._id,
 						email: user.email,
-						firstName: user.firstName,
-						lastName: user.lastName,
-						isEmailVerified: user.isEmailVerified,
-						profilePicture: user.profilePicture,
+						first_name: user.first_name,
+						last_name: user.last_name,
+						is_email_verified: user.is_email_verified,
+						profile_picture: user.profile_picture,
 						createdAt: user.createdAt,
 						updatedAt: user.updatedAt,
 					},

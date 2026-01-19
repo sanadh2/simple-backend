@@ -99,17 +99,17 @@ export const authenticate = asyncHandler(
 		logger.debug("User found, checking token validity", {
 			userId: user._id.toString(),
 			email: user.email,
-			hasTokensInvalidatedAt: !!user.tokensInvalidatedAt,
+			hasTokensInvalidatedAt: !!user.tokens_invalidated_at,
 		})
 
 		// Check if all tokens were invalidated after this token was issued
-		if (user.tokensInvalidatedAt && decoded.iat) {
+		if (user.tokens_invalidated_at && decoded.iat) {
 			const tokenIssuedAt = new Date(decoded.iat * 1000)
-			if (tokenIssuedAt < user.tokensInvalidatedAt) {
+			if (tokenIssuedAt < user.tokens_invalidated_at) {
 				logger.warn("Revoked token used", {
 					userId: user._id.toString(),
 					tokenIssuedAt,
-					tokensInvalidatedAt: user.tokensInvalidatedAt,
+					tokensInvalidatedAt: user.tokens_invalidated_at,
 					url: req.originalUrl,
 				})
 				throw new AppError("Token has been revoked. Please login again.", 401)
@@ -169,9 +169,9 @@ export const optionalAuthenticate = asyncHandler(
 
 				if (user) {
 					// Check if all tokens were invalidated after this token was issued
-					if (user.tokensInvalidatedAt && decoded.iat) {
+					if (user.tokens_invalidated_at && decoded.iat) {
 						const tokenIssuedAt = new Date(decoded.iat * 1000)
-						if (tokenIssuedAt < user.tokensInvalidatedAt) {
+						if (tokenIssuedAt < user.tokens_invalidated_at) {
 							// Token was revoked, skip authentication
 							logger.debug("Token revoked, skipping optional auth")
 							return next()
@@ -210,7 +210,7 @@ export const requireEmailVerified = (
 		throw new AppError("Authentication required", 401)
 	}
 
-	if (!req.user.isEmailVerified) {
+	if (!req.user.is_email_verified) {
 		throw new AppError(
 			"Email verification required to access this resource",
 			403

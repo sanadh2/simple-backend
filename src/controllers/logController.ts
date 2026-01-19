@@ -25,8 +25,8 @@ export class LogController {
 
 		if (req.query.level) filters.level = req.query.level as string
 		if (req.query.correlationId)
-			filters.correlationId = req.query.correlationId as string
-		if (req.query.userId) filters.userId = req.query.userId as string
+			filters.correlation_id = req.query.correlationId as string
+		if (req.query.userId) filters.user_id = req.query.userId as string
 		if (req.query.message) filters.message = req.query.message as string
 		if (req.query.startDate)
 			filters.startDate = new Date(req.query.startDate as string)

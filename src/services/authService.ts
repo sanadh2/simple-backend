@@ -78,7 +78,7 @@ export class AuthService {
 
 		// Store refresh token in database
 		await User.findByIdAndUpdate(user._id, {
-			$push: { refreshTokens: refreshToken },
+			$push: { refresh_tokens: refreshToken },
 		})
 
 		logger.debug("Refresh token stored successfully", {
@@ -174,7 +174,7 @@ export class AuthService {
 		// Check if refresh token exists in database
 		const user = await User.findOne({
 			_id: decoded.userId,
-			refreshTokens: refreshToken,
+			refresh_tokens: refreshToken,
 		})
 
 		if (!user) {
@@ -212,7 +212,7 @@ export class AuthService {
 		refreshToken: string
 	): Promise<void> {
 		await User.findByIdAndUpdate(userId, {
-			$pull: { refreshTokens: refreshToken },
+			$pull: { refresh_tokens: refreshToken },
 		})
 	}
 
@@ -222,8 +222,8 @@ export class AuthService {
 	static async revokeAllRefreshTokens(userId: string): Promise<void> {
 		await User.findByIdAndUpdate(userId, {
 			$set: {
-				refreshTokens: [],
-				tokensInvalidatedAt: new Date(),
+				refresh_tokens: [],
+				tokens_invalidated_at: new Date(),
 			},
 		})
 	}

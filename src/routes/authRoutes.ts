@@ -269,10 +269,10 @@ router.get("/me", authenticate, AuthController.getProfile)
  *           schema:
  *             type: object
  *             properties:
- *               firstName:
+ *               first_name:
  *                 type: string
  *                 description: User's first name
- *               lastName:
+ *               last_name:
  *                 type: string
  *                 description: User's last name
  *               currentRole:

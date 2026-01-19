@@ -2,8 +2,8 @@ import { Log } from "../models/index.js"
 
 interface LogFilters {
 	level?: string
-	correlationId?: string
-	userId?: string
+	correlation_id?: string
+	user_id?: string
 	startDate?: Date
 	endDate?: Date
 	message?: string
@@ -13,9 +13,9 @@ interface PaginatedLogs {
 	logs: Array<{
 		timestamp: Date
 		level: string
-		correlationId: string
+		correlation_id: string
 		message: string
-		userId?: string
+		user_id?: string
 		meta?: Record<string, unknown>
 	}>
 	totalCount: number
@@ -38,12 +38,12 @@ export class LogService {
 			matchStage.level = filters.level
 		}
 
-		if (filters.correlationId) {
-			matchStage.correlationId = filters.correlationId
+		if (filters.correlation_id) {
+			matchStage.correlation_id = filters.correlation_id
 		}
 
-		if (filters.userId) {
-			matchStage.userId = filters.userId
+		if (filters.user_id) {
+			matchStage.user_id = filters.user_id
 		}
 
 		if (filters.message) {
@@ -85,9 +85,9 @@ export class LogService {
 								_id: 0,
 								timestamp: 1,
 								level: 1,
-								correlationId: 1,
+								correlation_id: 1,
 								message: 1,
-								userId: 1,
+								user_id: 1,
 								meta: 1,
 							},
 						},
@@ -122,13 +122,13 @@ export class LogService {
 		Array<{
 			timestamp: Date
 			level: string
-			correlationId: string
+			correlation_id: string
 			message: string
-			userId?: string
+			user_id?: string
 			meta?: Record<string, unknown>
 		}>
 	> {
-		const logs = await Log.find({ correlationId })
+		const logs = await Log.find({ correlation_id: correlationId })
 			.sort({ timestamp: 1 })
 			.select("-_id")
 			.lean()
@@ -136,9 +136,9 @@ export class LogService {
 		return logs as Array<{
 			timestamp: Date
 			level: string
-			correlationId: string
+			correlation_id: string
 			message: string
-			userId?: string
+			user_id?: string
 			meta?: Record<string, unknown>
 		}>
 	}
@@ -191,9 +191,9 @@ export class LogService {
 		Array<{
 			timestamp: Date
 			level: string
-			correlationId: string
+			correlation_id: string
 			message: string
-			userId?: string
+			user_id?: string
 			meta?: Record<string, unknown>
 		}>
 	> {
@@ -206,9 +206,9 @@ export class LogService {
 		return errors as Array<{
 			timestamp: Date
 			level: string
-			correlationId: string
+			correlation_id: string
 			message: string
-			userId?: string
+			user_id?: string
 			meta?: Record<string, unknown>
 		}>
 	}

@@ -42,11 +42,11 @@ const options: swaggerJsdoc.Options = {
 							format: "email",
 							description: "User email address",
 						},
-						firstName: {
+						first_name: {
 							type: "string",
 							description: "User first name",
 						},
-						lastName: {
+						last_name: {
 							type: "string",
 							description: "User last name",
 						},
@@ -81,7 +81,7 @@ const options: swaggerJsdoc.Options = {
 				},
 				RegisterRequest: {
 					type: "object",
-					required: ["email", "password", "firstName", "lastName"],
+					required: ["email", "password", "first_name", "last_name"],
 					properties: {
 						email: {
 							type: "string",
@@ -93,11 +93,11 @@ const options: swaggerJsdoc.Options = {
 							minLength: 8,
 							example: "SecurePass123",
 						},
-						firstName: {
+						first_name: {
 							type: "string",
 							example: "John",
 						},
-						lastName: {
+						last_name: {
 							type: "string",
 							example: "Doe",
 						},
