@@ -2,14 +2,12 @@ import mongoose from "mongoose"
 
 import { AppError } from "../middleware/errorHandler.js"
 import { Bookmark, type IBookmark } from "../models/Bookmark.js"
-import { bookmarkQueue, type BookmarkTagJob } from "../queues/bookmarkQueue.js"
 
 export interface CreateBookmarkDTO {
 	url: string
 	title: string
 	description?: string | undefined
 	tags?: string[] | undefined
-	useAI?: boolean | undefined
 }
 
 export interface UpdateBookmarkDTO {
@@ -22,7 +20,7 @@ export class BookmarkService {
 	static async createBookmark(
 		userId: string,
 		data: CreateBookmarkDTO
-	): Promise<{ bookmark: IBookmark; jobId?: string | undefined }> {
+	): Promise<{ bookmark: IBookmark }> {
 		const existingBookmark = await Bookmark.findOne({ userId, url: data.url })
 
 		if (existingBookmark) {
@@ -44,25 +42,7 @@ export class BookmarkService {
 
 		const bookmark = await Bookmark.create(bookmarkData)
 
-		let jobId: string | undefined
-		if (data.useAI !== false) {
-			const jobData: BookmarkTagJob = {
-				bookmarkId: bookmark._id.toString(),
-				userId,
-				url: data.url,
-				title: data.title,
-				...(data.description && { description: data.description }),
-			}
-
-			const job = await bookmarkQueue.add("generate-tags", jobData, {
-				jobId: `bookmark-${bookmark._id.toString()}`,
-				priority: 1,
-			})
-
-			jobId = job.id || `bookmark-${bookmark._id.toString()}`
-		}
-
-		return { bookmark, jobId }
+		return { bookmark }
 	}
 
 	static async getBookmarks(
@@ -156,34 +136,5 @@ export class BookmarkService {
 		])
 
 		return result.map((r) => r.tag)
-	}
-
-	static async regenerateTags(
-		userId: string,
-		bookmarkId: string
-	): Promise<{ jobId: string; bookmark: IBookmark }> {
-		const bookmark = await Bookmark.findOne({ _id: bookmarkId, userId })
-
-		if (!bookmark) {
-			throw new AppError("Bookmark not found", 404)
-		}
-
-		const jobData: BookmarkTagJob = {
-			bookmarkId: bookmark._id.toString(),
-			userId,
-			url: bookmark.url,
-			title: bookmark.title,
-			...(bookmark.description && { description: bookmark.description }),
-		}
-
-		const jobId = `regenerate-${bookmark._id.toString()}-${Date.now()}`
-		const job = await bookmarkQueue.add("regenerate-tags", jobData, {
-			jobId,
-		})
-
-		return {
-			jobId: job.id || jobId,
-			bookmark,
-		}
 	}
 }

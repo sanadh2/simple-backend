@@ -21,7 +21,6 @@ import {
 } from "./middleware/errorHandler.js"
 import { globalLimiter } from "./middleware/rateLimiter.js"
 import { requestLoggerMiddleware } from "./middleware/requestLogger.js"
-import { bookmarkQueue } from "./queues/bookmarkQueue.js"
 import { logQueue } from "./queues/logQueue.js"
 import analyticsRoutes from "./routes/analyticsRoutes.js"
 import authRoutes from "./routes/authRoutes.js"
@@ -29,10 +28,6 @@ import bookmarkRoutes from "./routes/bookmarkRoutes.js"
 import logRoutes from "./routes/logRoutes.js"
 import { logger } from "./utils/logger.js"
 import { ResponseHandler } from "./utils/responseHandler.js"
-import {
-	startBookmarkWorker,
-	stopBookmarkWorker,
-} from "./workers/bookmarkWorker.js"
 import { startLogWorker, stopLogWorker } from "./workers/logWorker.js"
 
 const app = express()
@@ -41,7 +36,6 @@ const port = env.PORT
 await connectDatabase()
 
 startLogWorker()
-startBookmarkWorker()
 
 // Correlation ID middleware (must be first)
 app.use(correlationIdMiddleware)
@@ -234,9 +228,7 @@ const gracefulShutdown = () => {
 
 		Promise.all([
 			logQueue.close().then(() => console.log("✓ Log queue closed")),
-			bookmarkQueue.close().then(() => console.log("✓ Bookmark queue closed")),
 			stopLogWorker(),
-			stopBookmarkWorker(),
 			redisConnection
 				.quit()
 				.then(() => console.log("✓ Redis connection closed")),
