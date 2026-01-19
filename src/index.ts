@@ -12,7 +12,7 @@ import { connectDatabase } from "./config/database.js"
 import { env } from "./config/env.js"
 import { redisConnection } from "./config/redis.js"
 import { swaggerSpec } from "./config/swagger.js"
-import { correlation_idMiddleware } from "./middleware/correlation_id.js"
+import { correlation_idMiddleware } from "./middleware/correlationId.js"
 import {
 	AppError,
 	asyncHandler,
