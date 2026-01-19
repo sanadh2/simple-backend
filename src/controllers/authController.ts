@@ -42,17 +42,43 @@ export class AuthController {
 	 * POST /api/auth/register
 	 */
 	static register = asyncHandler(async (req: Request, res: Response) => {
+		logger.debug("Registration request received", {
+			email: (req.body as { email?: string }).email,
+			hasFirstName: !!(req.body as { firstName?: string }).firstName,
+			hasLastName: !!(req.body as { lastName?: string }).lastName,
+		})
+
 		// Validate request body
-		const validatedData = registerSchema.parse(req.body)
+		let validatedData
+		try {
+			validatedData = registerSchema.parse(req.body)
+			logger.debug("Registration data validated successfully", {
+				email: validatedData.email,
+			})
+		} catch (error) {
+			logger.warn("Registration validation failed", {
+				error: error instanceof Error ? error.message : "Unknown",
+				email: (req.body as { email?: string }).email,
+			})
+			throw error
+		}
 
 		// Check if user already exists
+		logger.debug("Checking if user already exists", {
+			email: validatedData.email,
+		})
 		const existingUser = await User.findOne({ email: validatedData.email })
 		if (existingUser) {
 			logger.warn("Registration attempt with existing email", {
 				email: validatedData.email,
+				existingUserId: existingUser._id.toString(),
 			})
 			throw new AppError("User with this email already exists", 409)
 		}
+
+		logger.debug("Creating new user", {
+			email: validatedData.email,
+		})
 
 		// Create new user
 		const user = await User.create({
@@ -62,8 +88,19 @@ export class AuthController {
 			lastName: validatedData.lastName,
 		})
 
+		logger.debug("User created, generating auth tokens", {
+			userId: user._id.toString(),
+			email: user.email,
+		})
+
 		// Generate auth tokens
 		const tokens = await AuthService.generateAuthTokens(user)
+
+		logger.debug("Auth tokens generated", {
+			userId: user._id.toString(),
+			hasAccessToken: !!tokens.accessToken,
+			hasRefreshToken: !!tokens.refreshToken,
+		})
 
 		if (req.session) {
 			req.session.refreshToken = tokens.refreshToken
@@ -101,9 +138,29 @@ export class AuthController {
 	})
 
 	static login = asyncHandler(async (req: Request, res: Response) => {
-		const validatedData = loginSchema.parse(req.body)
+		logger.debug("Login request received", {
+			email: (req.body as { email?: string }).email,
+			hasPassword: !!(req.body as { password?: string }).password,
+		})
+
+		let validatedData
+		try {
+			validatedData = loginSchema.parse(req.body)
+			logger.debug("Login data validated successfully", {
+				email: validatedData.email,
+			})
+		} catch (error) {
+			logger.warn("Login validation failed", {
+				error: error instanceof Error ? error.message : "Unknown",
+				email: (req.body as { email?: string }).email,
+			})
+			throw error
+		}
 
 		// Find user by email (include password field)
+		logger.debug("Looking up user by email", {
+			email: validatedData.email,
+		})
 		const user = await User.findOne({ email: validatedData.email }).select(
 			"+password"
 		)
@@ -111,9 +168,15 @@ export class AuthController {
 		if (!user) {
 			logger.warn("Login attempt with non-existent email", {
 				email: validatedData.email,
+				ip: req.ip,
 			})
 			throw new AppError("Invalid email or password", 401)
 		}
+
+		logger.debug("User found, verifying password", {
+			userId: user._id.toString(),
+			email: user.email,
+		})
 
 		// Check password
 		const isPasswordValid = await user.comparePassword(validatedData.password)
@@ -122,12 +185,21 @@ export class AuthController {
 			logger.warn("Login attempt with invalid password", {
 				email: validatedData.email,
 				userId: user._id.toString(),
+				ip: req.ip,
 			})
 			throw new AppError("Invalid email or password", 401)
 		}
 
+		logger.debug("Password verified, generating auth tokens", {
+			userId: user._id.toString(),
+		})
+
 		// Generate auth tokens
 		const tokens = await AuthService.generateAuthTokens(user)
+
+		logger.debug("Auth tokens generated for login", {
+			userId: user._id.toString(),
+		})
 
 		if (req.session) {
 			req.session.refreshToken = tokens.refreshToken
@@ -271,12 +343,21 @@ export class AuthController {
 	 * POST /api/auth/refresh
 	 */
 	static refreshToken = asyncHandler(async (req: Request, res: Response) => {
+		logger.debug("Token refresh request received", {
+			hasCookies: !!req.cookies,
+			hasBody: !!req.body,
+			hasSession: !!req.session,
+		})
+
 		let cookieToken: string | undefined
 		let bodyToken: string | undefined
 		let sessionToken: string | undefined
 
 		if (req.cookies) {
 			cookieToken = req.cookies.refreshToken as string | undefined
+			if (cookieToken) {
+				logger.debug("Refresh token found in cookie")
+			}
 		}
 
 		if (
@@ -287,22 +368,41 @@ export class AuthController {
 			try {
 				const validatedBody = refreshTokenSchema.parse(req.body)
 				bodyToken = validatedBody.refreshToken
+				if (bodyToken) {
+					logger.debug("Refresh token found in request body")
+				}
 			} catch {
 				bodyToken = undefined
+				logger.debug("Refresh token validation failed in body")
 			}
 		}
 
 		if (req.session) {
 			sessionToken = req.session.refreshToken
+			if (sessionToken) {
+				logger.debug("Refresh token found in session")
+			}
 		}
 
 		const refreshToken = cookieToken || bodyToken || sessionToken
 
 		if (!refreshToken) {
+			logger.warn("Token refresh failed: No refresh token provided", {
+				ip: req.ip,
+			})
 			throw new AppError("Refresh token is required", 400)
 		}
 
+		logger.debug("Refreshing access token", {
+			tokenLength: refreshToken.length,
+			tokenSource: cookieToken ? "cookie" : bodyToken ? "body" : "session",
+		})
+
 		const accessToken = await AuthService.refreshAccessToken(refreshToken)
+
+		logger.debug("Access token refreshed successfully", {
+			hasAccessToken: !!accessToken,
+		})
 
 		res.cookie("accessToken", accessToken, cookieOptions)
 

@@ -4,6 +4,7 @@ import { RedisStore } from "rate-limit-redis"
 
 import { env } from "../config/env.js"
 import { redisConnection } from "../config/redis.js"
+import { logger } from "../utils/logger.js"
 
 /**
  * Helper function to create a sendCommand function for RedisStore
@@ -41,6 +42,19 @@ export const globalLimiter = rateLimit({
 		// Skip rate limiting in test environment
 		return env.NODE_ENV === "test" || env.NODE_ENV === "development"
 	},
+	handler: (req, res) => {
+		logger.warn("Global rate limit exceeded", {
+			ip: req.ip,
+			url: req.originalUrl,
+			method: req.method,
+			userAgent: req.headers["user-agent"],
+		})
+		res.status(429).json({
+			success: false,
+			message:
+				"Too many requests from this IP (max 1000 per 15 min), please try again later",
+		})
+	},
 })
 
 /**
@@ -65,6 +79,27 @@ export const authLimiter = rateLimit({
 	skipSuccessfulRequests: true, // Don't count successful requests
 	skip: () => {
 		return env.NODE_ENV === "test" || env.NODE_ENV === "development"
+	},
+	handler: (req, res) => {
+		const userAgentHeader = req.headers["user-agent"]
+		const email =
+			req.body && typeof req.body === "object" && "email" in req.body
+				? (req.body as { email: string }).email
+				: undefined
+
+		logger.warn("Auth rate limit exceeded", {
+			ip: req.ip,
+			url: req.originalUrl,
+			method: req.method,
+			email,
+			userAgent:
+				typeof userAgentHeader === "string" ? userAgentHeader : undefined,
+		})
+		res.status(429).json({
+			success: false,
+			message:
+				"Too many authentication attempts (max 20 per 15 min), please try again later",
+		})
 	},
 })
 

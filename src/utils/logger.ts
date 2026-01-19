@@ -146,12 +146,10 @@ class Logger {
 		}
 	}
 
-	debug(message: string, meta?: LogMetadata, consoleOnly = false): void {
+	debug(message: string, meta?: LogMetadata): void {
 		if (env.NODE_ENV === "development") {
 			console.debug(this.formatConsoleMessage("debug", message, meta))
-			if (!consoleOnly) {
-				this.queueLog("debug", message, meta)
-			}
+			// Debug logs are never saved to database, only console output
 		}
 	}
 

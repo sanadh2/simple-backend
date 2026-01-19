@@ -2,12 +2,24 @@ import type { Request, Response } from "express"
 
 import { asyncHandler } from "../middleware/errorHandler.js"
 import { LogService } from "../services/logService.js"
+import { logger } from "../utils/logger.js"
 import { ResponseHandler } from "../utils/responseHandler.js"
 
 export class LogController {
 	static getLogs = asyncHandler(async (req: Request, res: Response) => {
+		logger.debug("Get logs request received", {
+			query: req.query,
+			userId: (req as Request & { userId?: string }).userId,
+		})
+
 		const page = parseInt(req.query.page as string) || 1
 		const limit = parseInt(req.query.limit as string) || 50
+
+		logger.debug("Parsing log filters", {
+			page,
+			limit,
+			rawQuery: req.query,
+		})
 
 		const filters: Record<string, string | Date> = {}
 
@@ -21,7 +33,19 @@ export class LogController {
 		if (req.query.endDate)
 			filters.endDate = new Date(req.query.endDate as string)
 
+		logger.debug("Fetching logs with filters", {
+			filters,
+			page,
+			limit,
+		})
+
 		const result = await LogService.getLogs(filters, page, limit)
+
+		logger.debug("Logs retrieved", {
+			count: result.logs.length,
+			totalCount: result.totalCount,
+			currentPage: result.currentPage,
+		})
 
 		ResponseHandler.success(res, 200, {
 			message: "Logs retrieved successfully",
@@ -67,7 +91,22 @@ export class LogController {
 
 	static clearOldLogs = asyncHandler(async (req: Request, res: Response) => {
 		const days = parseInt(req.query.days as string) || 30
+
+		logger.debug("Clear old logs request received", {
+			days,
+			userId: (req as Request & { userId?: string }).userId,
+		})
+
+		logger.info("Clearing old logs", {
+			days,
+		})
+
 		const result = await LogService.clearOldLogs(days)
+
+		logger.info("Old logs cleared", {
+			days,
+			deletedCount: result.deletedCount,
+		})
 
 		ResponseHandler.success(res, 200, {
 			message: `Cleared logs older than ${days} days`,

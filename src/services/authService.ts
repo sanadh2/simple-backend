@@ -4,6 +4,7 @@ import type { StringValue } from "ms"
 import { env } from "../config/env.js"
 import { AppError } from "../middleware/errorHandler.js"
 import { type IUser, User } from "../models/User.js"
+import { logger } from "../utils/logger.js"
 
 export interface TokenPayload {
 	userId: string
@@ -57,6 +58,11 @@ export class AuthService {
 	 * Generate both access and refresh tokens
 	 */
 	static async generateAuthTokens(user: IUser): Promise<AuthTokens> {
+		logger.debug("Generating auth tokens", {
+			userId: user._id.toString(),
+			email: user.email,
+		})
+
 		const accessToken = this.generateAccessToken(
 			user._id.toString(),
 			user.email
@@ -66,9 +72,17 @@ export class AuthService {
 			user.email
 		)
 
+		logger.debug("Tokens generated, storing refresh token in database", {
+			userId: user._id.toString(),
+		})
+
 		// Store refresh token in database
 		await User.findByIdAndUpdate(user._id, {
 			$push: { refreshTokens: refreshToken },
+		})
+
+		logger.debug("Refresh token stored successfully", {
+			userId: user._id.toString(),
 		})
 
 		return {
@@ -81,21 +95,40 @@ export class AuthService {
 	 * Verify access token
 	 */
 	static verifyAccessToken(token: string): TokenPayload {
+		logger.debug("Verifying access token", {
+			tokenLength: token.length,
+		})
+
 		try {
 			const decoded = jwt.verify(token, env.JWT_ACCESS_SECRET) as TokenPayload
 
 			if (decoded.type !== "access") {
+				logger.warn("Invalid token type for access token", {
+					tokenType: decoded.type,
+				})
 				throw new AppError("Invalid token type", 401)
 			}
+
+			logger.debug("Access token verified successfully", {
+				userId: decoded.userId,
+				email: decoded.email,
+			})
 
 			return decoded
 		} catch (error) {
 			if (error instanceof jwt.JsonWebTokenError) {
+				logger.warn("Invalid access token", {
+					error: error.message,
+				})
 				throw new AppError("Invalid token", 401)
 			}
 			if (error instanceof jwt.TokenExpiredError) {
+				logger.warn("Access token expired", {
+					expiredAt: error.expiredAt,
+				})
 				throw new AppError("Token expired", 401)
 			}
+			logger.error("Unexpected error verifying access token", error)
 			throw error
 		}
 	}
@@ -127,8 +160,16 @@ export class AuthService {
 	 * Refresh access token using refresh token
 	 */
 	static async refreshAccessToken(refreshToken: string): Promise<string> {
+		logger.debug("Refreshing access token", {
+			refreshTokenLength: refreshToken.length,
+		})
+
 		// Verify refresh token
 		const decoded = this.verifyRefreshToken(refreshToken)
+
+		logger.debug("Refresh token verified, checking in database", {
+			userId: decoded.userId,
+		})
 
 		// Check if refresh token exists in database
 		const user = await User.findOne({
@@ -137,11 +178,30 @@ export class AuthService {
 		})
 
 		if (!user) {
+			logger.warn("Refresh token not found in database", {
+				userId: decoded.userId,
+			})
 			throw new AppError("Invalid refresh token", 401)
 		}
 
+		logger.debug(
+			"Refresh token found in database, generating new access token",
+			{
+				userId: user._id.toString(),
+			}
+		)
+
 		// Generate new access token
-		return this.generateAccessToken(user._id.toString(), user.email)
+		const accessToken = this.generateAccessToken(
+			user._id.toString(),
+			user.email
+		)
+
+		logger.debug("New access token generated", {
+			userId: user._id.toString(),
+		})
+
+		return accessToken
 	}
 
 	/**

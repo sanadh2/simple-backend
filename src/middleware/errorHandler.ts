@@ -61,12 +61,25 @@ export const errorHandler = (
 		method: req.method,
 		url: req.originalUrl,
 		ip: req.ip,
+		correlationId: (req as Request & { correlationId?: string }).correlationId,
+		userId: (req as Request & { userId?: string }).userId,
+		errorName: err.name,
+		errorStack: err instanceof Error ? err.stack : undefined,
 	}
+
+	logger.debug("Error handler invoked", {
+		statusCode,
+		message,
+		errorName: err.name,
+		url: req.originalUrl,
+	})
 
 	if (statusCode >= 500) {
 		logger.error(message, err, logMeta)
 	} else if (statusCode >= 400) {
-		logger.warn(message, { ...logMeta, errorName: err.name })
+		logger.warn(message, logMeta)
+	} else {
+		logger.debug("Error handled (non-4xx/5xx)", logMeta)
 	}
 
 	res.status(statusCode).json({
