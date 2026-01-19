@@ -2,7 +2,12 @@ import { Router } from "express"
 
 import { AuthController } from "../controllers/index.js"
 import { authenticate } from "../middleware/authMiddleware.js"
-import { authLimiter, strictLimiter } from "../middleware/rateLimiter.js"
+import {
+	authLimiter,
+	passwordResetAttemptLimiter,
+	passwordResetRequestLimiter,
+	strictLimiter,
+} from "../middleware/rateLimiter.js"
 import { uploadProfilePicture } from "../middleware/uploadMiddleware.js"
 
 const router = Router()
@@ -476,7 +481,7 @@ router.post(
  */
 router.post(
 	"/forgot-password",
-	strictLimiter,
+	passwordResetRequestLimiter,
 	AuthController.requestPasswordReset
 )
 
@@ -530,7 +535,11 @@ router.post(
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post("/reset-password", strictLimiter, AuthController.resetPassword)
+router.post(
+	"/reset-password",
+	passwordResetAttemptLimiter,
+	AuthController.resetPassword
+)
 
 /**
  * @openapi

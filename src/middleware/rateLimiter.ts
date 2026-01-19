@@ -1,4 +1,4 @@
-import rateLimit from "express-rate-limit"
+import rateLimit, { ipKeyGenerator } from "express-rate-limit"
 import type { RedisReply } from "rate-limit-redis"
 import { RedisStore } from "rate-limit-redis"
 
@@ -145,5 +145,111 @@ export const strictLimiter = rateLimit({
 	},
 	skip: (_req) => {
 		return env.NODE_ENV === "test" || env.NODE_ENV === "development"
+	},
+})
+
+/**
+ * Password reset request limiter - prevents email enumeration and spam
+ * Limits: 5 requests per hour per email address
+ * Uses email from request body as key instead of IP
+ */
+export const passwordResetRequestLimiter = rateLimit({
+	windowMs: 60 * 60 * 1000, // 1 hour
+	max: 5, // Limit each email to 5 requests per hour
+	standardHeaders: true,
+	legacyHeaders: false,
+	keyGenerator: (req) => {
+		const email =
+			req.body && typeof req.body === "object" && "email" in req.body
+				? (req.body as { email: string }).email?.toLowerCase()
+				: null
+		if (email) {
+			return `password-reset-request:${email}`
+		}
+		const ip = req.ip || req.socket.remoteAddress || "unknown"
+		return `password-reset-request:${ipKeyGenerator(ip)}`
+	},
+	store: new RedisStore({
+		sendCommand: createSendCommand(),
+		prefix: "rl:pw-reset-req:",
+	}),
+	message: {
+		success: false,
+		message:
+			"Too many password reset requests for this email (max 5 per hour), please try again later",
+	},
+	skip: (_req) => {
+		return env.NODE_ENV === "test" || env.NODE_ENV === "development"
+	},
+	handler: (req, res) => {
+		const email =
+			req.body && typeof req.body === "object" && "email" in req.body
+				? (req.body as { email: string }).email
+				: undefined
+
+		logger.warn("Password reset request rate limit exceeded", {
+			ip: req.ip,
+			email,
+			url: req.originalUrl,
+			method: req.method,
+		})
+		res.status(429).json({
+			success: false,
+			message:
+				"Too many password reset requests for this email (max 5 per hour), please try again later",
+		})
+	},
+})
+
+/**
+ * Password reset attempt limiter - prevents brute force OTP attacks
+ * Limits: 10 attempts per hour per email address
+ */
+export const passwordResetAttemptLimiter = rateLimit({
+	windowMs: 60 * 60 * 1000, // 1 hour
+	max: 10, // Limit each email to 10 reset attempts per hour
+	standardHeaders: true,
+	legacyHeaders: false,
+	keyGenerator: (req) => {
+		const email =
+			req.body && typeof req.body === "object" && "email" in req.body
+				? (req.body as { email: string }).email?.toLowerCase()
+				: null
+		if (email) {
+			return `password-reset-attempt:${email}`
+		}
+		const ip = req.ip || req.socket.remoteAddress || "unknown"
+		return `password-reset-attempt:${ipKeyGenerator(ip)}`
+	},
+	store: new RedisStore({
+		sendCommand: createSendCommand(),
+		prefix: "rl:pw-reset-attempt:",
+	}),
+	message: {
+		success: false,
+		message:
+			"Too many password reset attempts for this email (max 10 per hour), please try again later",
+	},
+	skipSuccessfulRequests: true, // Don't count successful resets
+	skip: (_req) => {
+		return env.NODE_ENV === "test" || env.NODE_ENV === "development"
+	},
+	handler: (req, res) => {
+		const email =
+			req.body && typeof req.body === "object" && "email" in req.body
+				? (req.body as { email: string }).email
+				: undefined
+
+		logger.warn("Password reset attempt rate limit exceeded", {
+			ip: req.ip,
+			email,
+			url: req.originalUrl,
+			method: req.method,
+		})
+		res.status(429).json({
+			success: false,
+			message:
+				"Too many password reset attempts for this email (max 10 per hour), please try again later",
+		})
 	},
 })

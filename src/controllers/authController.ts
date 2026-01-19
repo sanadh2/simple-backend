@@ -758,6 +758,17 @@ export class AuthController {
 			throw new AppError("Invalid or expired OTP", 400)
 		}
 
+		const isSamePassword = await user.comparePassword(validatedData.newPassword)
+		if (isSamePassword) {
+			logger.warn("Password reset attempted with same password", {
+				userId: user._id.toString(),
+			})
+			throw new AppError(
+				"New password must be different from your current password",
+				400
+			)
+		}
+
 		user.password = validatedData.newPassword
 		await user.save()
 
