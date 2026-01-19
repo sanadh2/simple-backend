@@ -1,7 +1,10 @@
 import { Router } from "express"
 
 import { AuthController } from "../controllers/index.js"
-import { authenticate } from "../middleware/authMiddleware.js"
+import {
+	authenticate,
+	requireEmailVerified,
+} from "../middleware/authMiddleware.js"
 import { authLimiter, strictLimiter } from "../middleware/rateLimiter.js"
 
 const router = Router()
@@ -330,6 +333,67 @@ router.post(
 	authenticate,
 	strictLimiter,
 	AuthController.verifyEmail
+)
+
+/**
+ * @openapi
+ * /api/auth/verify-email-login:
+ *   post:
+ *     tags:
+ *       - Authentication
+ *     summary: Verify email and complete login
+ *     description: Verify user's email address using OTP and complete login process
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - otp
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: User's email address
+ *               otp:
+ *                 type: string
+ *                 description: The OTP received via email
+ *     responses:
+ *       200:
+ *         description: Email verified and login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       type: object
+ *       400:
+ *         description: Invalid or expired OTP, or email already verified
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.post(
+	"/verify-email-login",
+	strictLimiter,
+	AuthController.verifyEmailAndLogin
 )
 
 /**

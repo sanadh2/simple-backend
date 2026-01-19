@@ -201,9 +201,6 @@ export const optionalAuthenticate = asyncHandler(
 	}
 )
 
-/**
- * Middleware to check if user email is verified
- */
 export const requireEmailVerified = (
 	req: Request,
 	_res: Response,

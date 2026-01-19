@@ -42,6 +42,11 @@ const resetPasswordSchema = z.object({
 	newPassword: z.string().min(8, "Password must be at least 8 characters"),
 })
 
+const verifyEmailLoginSchema = z.object({
+	email: z.email("Invalid email address"),
+	otp: z.string().min(4, "OTP is required"),
+})
+
 const cookieOptions: CookieOptions = {
 	httpOnly: true,
 	secure: env.NODE_ENV === "production",
@@ -215,6 +220,37 @@ export class AuthController {
 			throw new AppError("Invalid email or password", 401)
 		}
 
+		if (!user.isEmailVerified) {
+			logger.info("Login attempt with unverified email, sending OTP", {
+				email: user.email,
+				userId: user._id.toString(),
+			})
+
+			const otp = OTPService.generateOTP()
+			const otpExpiry = OTPService.getOTPExpiry()
+
+			await User.findByIdAndUpdate(user._id, {
+				emailVerificationOTP: otp,
+				emailVerificationOTPExpiry: otpExpiry,
+			})
+
+			await EmailService.sendVerificationOTP(user.email, user.firstName, otp)
+
+			logger.info("Verification OTP sent for login", {
+				userId: user._id.toString(),
+				email: user.email,
+			})
+
+			ResponseHandler.success(res, 200, {
+				message: "Please verify your email to complete login",
+				data: {
+					requiresVerification: true,
+					email: user.email,
+				},
+			})
+			return
+		}
+
 		logger.debug("Password verified, generating auth tokens", {
 			userId: user._id.toString(),
 		})
@@ -241,6 +277,7 @@ export class AuthController {
 		})
 
 		Logger.setContext({ userId: user._id.toString() })
+
 		logger.info("User logged in successfully", {
 			email: user.email,
 			userId: user._id.toString(),
@@ -533,6 +570,83 @@ export class AuthController {
 			message: "Email verified successfully",
 		})
 	})
+
+	static verifyEmailAndLogin = asyncHandler(
+		async (req: Request, res: Response) => {
+			const validatedData = verifyEmailLoginSchema.parse(req.body)
+
+			const user = await User.findOne({
+				email: validatedData.email,
+			}).select("+emailVerificationOTP +emailVerificationOTPExpiry")
+
+			if (!user) {
+				throw new AppError("User not found", 404)
+			}
+
+			if (user.isEmailVerified) {
+				throw new AppError("Email already verified", 400)
+			}
+
+			const isValid = OTPService.verifyOTP(
+				validatedData.otp,
+				user.emailVerificationOTP,
+				user.emailVerificationOTPExpiry
+			)
+
+			if (!isValid) {
+				logger.warn("Invalid or expired verification OTP for login", {
+					userId: user._id.toString(),
+					email: validatedData.email,
+				})
+				throw new AppError("Invalid or expired OTP", 400)
+			}
+
+			await User.findByIdAndUpdate(user._id, {
+				isEmailVerified: true,
+				$unset: {
+					emailVerificationOTP: "",
+					emailVerificationOTPExpiry: "",
+				},
+			})
+
+			const tokens = await AuthService.generateAuthTokens(user)
+
+			if (req.session) {
+				req.session.refreshToken = tokens.refreshToken
+				req.session.userId = user._id.toString()
+			}
+
+			res.cookie("refreshToken", tokens.refreshToken, {
+				...cookieOptions,
+				maxAge: 7 * 24 * 60 * 60 * 1000,
+			})
+
+			res.cookie("accessToken", tokens.accessToken, {
+				...cookieOptions,
+				maxAge: 15 * 60 * 1000,
+			})
+
+			Logger.setContext({ userId: user._id.toString() })
+
+			logger.info("Email verified and user logged in", {
+				userId: user._id.toString(),
+				email: user.email,
+			})
+
+			ResponseHandler.success(res, 200, {
+				message: "Email verified and login successful",
+				data: {
+					user: {
+						id: user._id,
+						email: user.email,
+						firstName: user.firstName,
+						lastName: user.lastName,
+						isEmailVerified: true,
+					},
+				},
+			})
+		}
+	)
 
 	static requestPasswordReset = asyncHandler(
 		async (req: Request, res: Response) => {
