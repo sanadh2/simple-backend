@@ -61,7 +61,8 @@ export const errorHandler = (
 		method: req.method,
 		url: req.originalUrl,
 		ip: req.ip,
-		correlation_id: (req as Request & { correlation_id?: string }).correlation_id,
+		correlation_id: (req as Request & { correlation_id?: string })
+			.correlation_id,
 		userId: (req as Request & { userId?: string }).userId,
 		errorName: err.name,
 		errorStack: err instanceof Error ? err.stack : undefined,

@@ -1,0 +1,123 @@
+import mongoose, { Document, Schema } from "mongoose"
+
+export type JobStatus =
+	| "Wishlist"
+	| "Applied"
+	| "Interview Scheduled"
+	| "Interviewing"
+	| "Offer"
+	| "Rejected"
+	| "Accepted"
+	| "Withdrawn"
+
+export type LocationType = "remote" | "hybrid" | "onsite"
+
+export type PriorityLevel = "high" | "medium" | "low"
+
+export interface IJobApplication extends Document {
+	user_id: mongoose.Types.ObjectId
+	company_name: string
+	job_title: string
+	job_description?: string
+	application_date: Date
+	status: JobStatus
+	salary_range?: string
+	location_type: LocationType
+	location_city?: string
+	job_posting_url?: string
+	application_method?: string
+	priority: PriorityLevel
+	createdAt: Date
+	updatedAt: Date
+}
+
+const jobApplicationSchema = new Schema<IJobApplication>(
+	{
+		user_id: {
+			type: Schema.Types.ObjectId,
+			ref: "User",
+			required: [true, "User ID is required"],
+			index: true,
+		},
+		company_name: {
+			type: String,
+			required: [true, "Company name is required"],
+			trim: true,
+		},
+		job_title: {
+			type: String,
+			required: [true, "Job title is required"],
+			trim: true,
+		},
+		job_description: {
+			type: String,
+			trim: true,
+		},
+		application_date: {
+			type: Date,
+			required: [true, "Application date is required"],
+			default: Date.now,
+		},
+		status: {
+			type: String,
+			enum: [
+				"Wishlist",
+				"Applied",
+				"Interview Scheduled",
+				"Interviewing",
+				"Offer",
+				"Rejected",
+				"Accepted",
+				"Withdrawn",
+			],
+			required: [true, "Status is required"],
+			default: "Wishlist",
+		},
+		salary_range: {
+			type: String,
+			trim: true,
+		},
+		location_type: {
+			type: String,
+			enum: ["remote", "hybrid", "onsite"],
+			required: [true, "Location type is required"],
+		},
+		location_city: {
+			type: String,
+			trim: true,
+		},
+		job_posting_url: {
+			type: String,
+			trim: true,
+		},
+		application_method: {
+			type: String,
+			trim: true,
+		},
+		priority: {
+			type: String,
+			enum: ["high", "medium", "low"],
+			required: [true, "Priority is required"],
+			default: "medium",
+		},
+	},
+	{
+		timestamps: true,
+		toJSON: {
+			transform: (_doc, ret: Record<string, unknown>) => {
+				const cleaned = { ...ret }
+				delete cleaned.__v
+				return cleaned
+			},
+		},
+	}
+)
+
+jobApplicationSchema.index({ user_id: 1, application_date: -1 })
+jobApplicationSchema.index({ user_id: 1, status: 1 })
+jobApplicationSchema.index({ user_id: 1, company_name: 1 })
+
+export const JobApplication = mongoose.model<IJobApplication>(
+	"JobApplication",
+	jobApplicationSchema
+)
