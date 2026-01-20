@@ -57,6 +57,61 @@ app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 app.use(cookieParser())
 
+/**
+ * Formats uptime in seconds to a human-readable string with years, months, days, hours, minutes, and seconds
+ */
+function formatUptime(seconds: number): string {
+	const SECONDS_PER_MINUTE = 60
+	const SECONDS_PER_HOUR = 3600
+	const SECONDS_PER_DAY = 86400
+	const SECONDS_PER_MONTH = 2629746
+	const SECONDS_PER_YEAR = 31556952
+
+	const parts: string[] = []
+	let remaining = seconds
+
+	if (remaining >= SECONDS_PER_YEAR) {
+		const years = Math.floor(remaining / SECONDS_PER_YEAR)
+		parts.push(`${years} ${years === 1 ? "year" : "years"}`)
+		remaining %= SECONDS_PER_YEAR
+	}
+
+	if (remaining >= SECONDS_PER_MONTH) {
+		const months = Math.floor(remaining / SECONDS_PER_MONTH)
+		parts.push(`${months} ${months === 1 ? "month" : "months"}`)
+		remaining %= SECONDS_PER_MONTH
+	}
+
+	if (remaining >= SECONDS_PER_DAY) {
+		const days = Math.floor(remaining / SECONDS_PER_DAY)
+		parts.push(`${days} ${days === 1 ? "day" : "days"}`)
+		remaining %= SECONDS_PER_DAY
+	}
+
+	if (remaining >= SECONDS_PER_HOUR) {
+		const hours = Math.floor(remaining / SECONDS_PER_HOUR)
+		parts.push(`${hours} ${hours === 1 ? "hour" : "hours"}`)
+		remaining %= SECONDS_PER_HOUR
+	}
+
+	if (remaining >= SECONDS_PER_MINUTE) {
+		const minutes = Math.floor(remaining / SECONDS_PER_MINUTE)
+		parts.push(`${minutes} ${minutes === 1 ? "minute" : "minutes"}`)
+		remaining %= SECONDS_PER_MINUTE
+	}
+
+	if (remaining > 0) {
+		const secs = Math.floor(remaining)
+		parts.push(`${secs} ${secs === 1 ? "second" : "seconds"}`)
+	}
+
+	if (parts.length === 0) {
+		return "0 seconds"
+	}
+
+	return parts.join(", ")
+}
+
 app.get(
 	"/health",
 	asyncHandler(async (_req: Request, res: Response) => {
@@ -121,7 +176,7 @@ app.get(
 			data: {
 				status: allHealthy ? "healthy" : "degraded",
 				checks,
-				uptime: process.uptime(),
+				uptime: formatUptime(process.uptime()),
 				environment: env.NODE_ENV,
 			},
 		})
