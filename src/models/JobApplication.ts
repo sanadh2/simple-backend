@@ -19,6 +19,7 @@ export interface IJobApplication extends Document {
 	company_name: string
 	job_title: string
 	job_description?: string
+	notes?: string
 	application_date: Date
 	status: JobStatus
 	salary_range?: string
@@ -27,6 +28,8 @@ export interface IJobApplication extends Document {
 	job_posting_url?: string
 	application_method?: string
 	priority: PriorityLevel
+	resume_url?: string
+	cover_letter_url?: string
 	createdAt: Date
 	updatedAt: Date
 }
@@ -50,6 +53,10 @@ const jobApplicationSchema = new Schema<IJobApplication>(
 			trim: true,
 		},
 		job_description: {
+			type: String,
+			trim: true,
+		},
+		notes: {
 			type: String,
 			trim: true,
 		},
@@ -99,6 +106,14 @@ const jobApplicationSchema = new Schema<IJobApplication>(
 			enum: ["high", "medium", "low"],
 			required: [true, "Priority is required"],
 			default: "medium",
+		},
+		resume_url: {
+			type: String,
+			trim: true,
+		},
+		cover_letter_url: {
+			type: String,
+			trim: true,
 		},
 	},
 	{

@@ -1,11 +1,13 @@
 import type { Request, Response } from "express"
 
+import { AppError } from "../middleware/errorHandler.js"
 import { asyncHandler } from "../middleware/errorHandler.js"
 import {
 	createJobApplicationSchema,
 	JobApplicationService,
 	updateJobApplicationSchema,
 } from "../services/index.js"
+import { fileUploadService } from "../services/index.js"
 import { logger } from "../utils/logger.js"
 import { ResponseHandler } from "../utils/responseHandler.js"
 
@@ -153,6 +155,51 @@ export class JobApplicationController {
 
 		ResponseHandler.success(res, 200, {
 			message: "Job application deleted successfully",
+		})
+	})
+
+	static uploadFile = asyncHandler(async (req: Request, res: Response) => {
+		const userId = (req as Request & { userId?: string }).userId
+
+		if (!userId) {
+			throw new Error("User ID not found in request")
+		}
+
+		if (!req.file) {
+			throw new AppError("No file uploaded", 400)
+		}
+
+		const body = req.body as { fileType?: string } | undefined
+		const fileType = body?.fileType
+
+		if (!fileType || !["resume", "cover_letter"].includes(fileType)) {
+			throw new AppError(
+				"Invalid file type. Must be 'resume' or 'cover_letter'",
+				400
+			)
+		}
+
+		const folder = `job-applications/${fileType}`
+		const uploadResult = await fileUploadService.uploadFile(
+			req.file.buffer,
+			req.file.originalname,
+			folder,
+			userId,
+			"raw"
+		)
+
+		logger.info("Job application file uploaded", {
+			userId,
+			fileType,
+			url: uploadResult.url,
+		})
+
+		ResponseHandler.success(res, 200, {
+			message: "File uploaded successfully",
+			data: {
+				url: uploadResult.url,
+				publicId: uploadResult.publicId,
+			},
 		})
 	})
 }

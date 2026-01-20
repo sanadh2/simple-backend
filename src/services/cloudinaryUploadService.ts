@@ -24,30 +24,38 @@ class CloudinaryUploadService implements FileUploadService {
 		buffer: Buffer,
 		filename: string,
 		folder: string,
-		userId: string
+		userId: string,
+		resourceType: "image" | "raw" = "image"
 	): Promise<UploadResult> {
 		const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`
 		const publicId = `${folder}/${userId}-${uniqueSuffix}`
 
+		const uploadOptions: Record<string, unknown> = {
+			public_id: publicId,
+			folder: folder,
+			resource_type: resourceType,
+			use_filename: false,
+			unique_filename: false,
+		}
+
+		if (resourceType === "image") {
+			uploadOptions.allowed_formats = ["jpg", "jpeg", "png", "webp"]
+			uploadOptions.transformation = [
+				{
+					width: 800,
+					height: 800,
+					crop: "limit",
+					quality: "auto",
+					fetch_format: "auto",
+				},
+			]
+		} else if (resourceType === "raw") {
+			uploadOptions.allowed_formats = ["pdf", "doc", "docx", "txt"]
+		}
+
 		return new Promise((resolve, reject) => {
 			const uploadStream = cloudinary.uploader.upload_stream(
-				{
-					public_id: publicId,
-					folder: folder,
-					resource_type: "image",
-					allowed_formats: ["jpg", "jpeg", "png", "webp"],
-					transformation: [
-						{
-							width: 800,
-							height: 800,
-							crop: "limit",
-							quality: "auto",
-							fetch_format: "auto",
-						},
-					],
-					use_filename: false,
-					unique_filename: false,
-				},
+				uploadOptions,
 				(error, result) => {
 					if (error) {
 						let errorMessage = "Unknown error"
@@ -111,12 +119,15 @@ class CloudinaryUploadService implements FileUploadService {
 	/**
 	 * Delete a file from Cloudinary
 	 */
-	async deleteFile(urlOrPublicId: string): Promise<void> {
+	async deleteFile(
+		urlOrPublicId: string,
+		resourceType: "image" | "raw" = "image"
+	): Promise<void> {
 		try {
 			const publicId = this.extractPublicId(urlOrPublicId) || urlOrPublicId
 
 			await cloudinary.uploader.destroy(publicId, {
-				resource_type: "image",
+				resource_type: resourceType,
 			})
 		} catch (error) {
 			console.error("Failed to delete file from Cloudinary:", error)

@@ -6,6 +6,7 @@ import {
 	requireEmailVerified,
 } from "../middleware/authMiddleware.js"
 import { apiLimiter } from "../middleware/rateLimiter.js"
+import { uploadDocument } from "../middleware/uploadMiddleware.js"
 
 const router = Router()
 
@@ -44,6 +45,14 @@ router.delete(
 	authenticate,
 	requireEmailVerified,
 	JobApplicationController.delete
+)
+
+router.post(
+	"/upload-file",
+	authenticate,
+	requireEmailVerified,
+	uploadDocument.single("file"),
+	JobApplicationController.uploadFile
 )
 
 export default router

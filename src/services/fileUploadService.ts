@@ -20,21 +20,27 @@ export interface FileUploadService {
 	 * @param filename - Original filename (for extension detection)
 	 * @param folder - Folder/path where the file should be stored
 	 * @param userId - User ID for generating unique file names
+	 * @param resourceType - Type of resource: "image" for images, "raw" for documents/PDFs
 	 * @returns Promise resolving to the upload result with URL
 	 */
 	uploadFile(
 		buffer: Buffer,
 		filename: string,
 		folder: string,
-		userId: string
+		userId: string,
+		resourceType?: "image" | "raw"
 	): Promise<UploadResult>
 
 	/**
 	 * Delete a file from the storage provider
 	 * @param urlOrPublicId - URL or public ID of the file to delete
+	 * @param resourceType - Type of resource: "image" for images, "raw" for documents/PDFs
 	 * @returns Promise resolving when deletion is complete
 	 */
-	deleteFile(urlOrPublicId: string): Promise<void>
+	deleteFile(
+		urlOrPublicId: string,
+		resourceType?: "image" | "raw"
+	): Promise<void>
 
 	/**
 	 * Check if a URL belongs to this provider
