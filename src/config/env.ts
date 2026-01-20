@@ -38,7 +38,7 @@ const envSchema = z.object({
 		.transform((val) => parseInt(val, 10))
 		.pipe(z.number().positive()),
 	REDIS_PASSWORD: z.string().optional(),
-	FRONTEND_URL: z.url().default("http://localhost:4001"),
+	FRONTEND_URL: z.string().default("http://localhost:4001"),
 
 	SMTP_HOST: z.string().default("smtp.gmail.com"),
 	SMTP_PORT: z

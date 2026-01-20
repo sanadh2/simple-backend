@@ -46,7 +46,7 @@ app.use(requestLoggerMiddleware)
 
 app.use(
 	cors({
-		origin: env.FRONTEND_URL.toString(),
+		origin: env.FRONTEND_URL.split(",").map((url) => url.trim()),
 		credentials: true,
 		methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
 		allowedHeaders: ["Content-Type", "Authorization", "X-Correlation-ID"],
