@@ -43,4 +43,18 @@ export default [
 			"no-var": "error",
 		},
 	},
+	{
+		files: ["**/*.ts"],
+		rules: {
+			"no-restricted-syntax": [
+				"error",
+				{
+					selector:
+						'ImportDeclaration[source.type="Literal"][source.value=/^\\./][source.value!=/\\.js$/]',
+					message:
+						"Relative imports must include .js extension for ESM compatibility. Use './file.js' instead of './file'",
+				},
+			],
+		},
+	},
 ]

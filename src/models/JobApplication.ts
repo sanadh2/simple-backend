@@ -1,7 +1,7 @@
 import mongoose, { Document, Schema } from "mongoose"
 
-import { Interview } from "./Interview"
-import { StatusHistory } from "./StatusHistory"
+import { Interview } from "./Interview.js"
+import { StatusHistory } from "./StatusHistory.js"
 
 export type JobStatus =
 	| "Wishlist"
