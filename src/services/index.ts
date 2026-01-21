@@ -4,6 +4,13 @@ export { cloudinaryUploadService as fileUploadService } from "./cloudinaryUpload
 export { EmailService } from "./emailService.js"
 export type { FileUploadService, UploadResult } from "./fileUploadService.js"
 export {
+	type CreateInterviewInput,
+	createInterviewSchema,
+	InterviewService,
+	type UpdateInterviewInput,
+	updateInterviewSchema,
+} from "./interviewService.js"
+export {
 	type CreateJobApplicationInput,
 	createJobApplicationSchema,
 	JobApplicationService,
