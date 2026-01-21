@@ -36,6 +36,8 @@ import { startLogWorker, stopLogWorker } from "./workers/logWorker.js"
 const app = express()
 const port = env.PORT
 
+app.set("trust proxy", true)
+
 await connectDatabase()
 
 EmailService.initialize()
