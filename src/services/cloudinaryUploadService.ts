@@ -8,6 +8,7 @@
 import { v2 as cloudinary } from "cloudinary"
 
 import { env } from "../config/env.js"
+import { logger } from "../utils/logger.js"
 import type { FileUploadService, UploadResult } from "./fileUploadService.js"
 
 cloudinary.config({
@@ -27,8 +28,24 @@ class CloudinaryUploadService implements FileUploadService {
 		userId: string,
 		resourceType: "image" | "raw" = "image"
 	): Promise<UploadResult> {
+		logger.debug("Starting file upload to Cloudinary", {
+			filename,
+			folder,
+			userId,
+			resourceType,
+			bufferSize: buffer.length,
+		})
+
 		const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`
-		const publicId = `${folder}/${userId}-${uniqueSuffix}`
+
+		const fileExtension = filename.toLowerCase().split(".").pop() || ""
+
+		const publicId =
+			resourceType === "raw"
+				? `${folder}/${userId}-${uniqueSuffix}.${fileExtension}`
+				: `${folder}/${userId}-${uniqueSuffix}`
+
+		logger.debug("Generated public ID for upload", { publicId })
 
 		const uploadOptions: Record<string, unknown> = {
 			public_id: publicId,
@@ -83,16 +100,45 @@ class CloudinaryUploadService implements FileUploadService {
 								? { error: JSON.stringify(error) }
 								: { error: String(error) }),
 						}
-						console.error("Cloudinary upload error details:", errorDetails)
+
+						logger.error(
+							"Cloudinary upload failed",
+							error instanceof Error ? error : new Error(errorMessage),
+							{
+								filename,
+								folder,
+								userId,
+								resourceType,
+								publicId,
+								errorDetails,
+							}
+						)
 
 						reject(new Error(`Cloudinary upload failed: ${errorMessage}`))
 						return
 					}
 
 					if (!result) {
-						reject(new Error("Cloudinary upload returned no result"))
+						const error = new Error("Cloudinary upload returned no result")
+						logger.error("Cloudinary upload returned no result", error, {
+							filename,
+							folder,
+							userId,
+							resourceType,
+							publicId,
+						})
+						reject(error)
 						return
 					}
+
+					logger.info("File uploaded successfully to Cloudinary", {
+						filename,
+						folder,
+						userId,
+						resourceType,
+						publicId: result.public_id,
+						url: result.secure_url,
+					})
 
 					resolve({
 						url: result.secure_url,
@@ -124,13 +170,37 @@ class CloudinaryUploadService implements FileUploadService {
 		resourceType: "image" | "raw" = "image"
 	): Promise<void> {
 		try {
+			logger.debug("Starting file deletion from Cloudinary", {
+				urlOrPublicId,
+				resourceType,
+			})
+
 			const publicId = this.extractPublicId(urlOrPublicId) || urlOrPublicId
+
+			logger.debug("Extracted public ID for deletion", {
+				publicId,
+				urlOrPublicId,
+			})
 
 			await cloudinary.uploader.destroy(publicId, {
 				resource_type: resourceType,
+				invalidate: true,
+			})
+
+			logger.info("File deleted successfully from Cloudinary", {
+				publicId,
+				resourceType,
 			})
 		} catch (error) {
-			console.error("Failed to delete file from Cloudinary:", error)
+			logger.error(
+				"Failed to delete file from Cloudinary",
+				error instanceof Error ? error : new Error(String(error)),
+				{
+					urlOrPublicId,
+					resourceType,
+				}
+			)
+			throw error
 		}
 	}
 
@@ -147,23 +217,45 @@ class CloudinaryUploadService implements FileUploadService {
 	 */
 	extractPublicId(url: string): string | null {
 		if (!this.isProviderUrl(url)) {
+			logger.debug(
+				"URL is not a Cloudinary URL, skipping public ID extraction",
+				{
+					url,
+				}
+			)
 			return null
 		}
 
 		try {
-			const match = url.match(/\/upload\/(?:v\d+\/)?(.+?)(?:\.[^.]+)?$/)
+			logger.debug("Extracting public ID from Cloudinary URL", { url })
+
+			const match = url.match(/\/upload\/(?:v\d+\/)?(.+)$/)
 			if (match && match[1]) {
+				logger.debug("Successfully extracted public ID using regex", {
+					publicId: match[1],
+					url,
+				})
 				return match[1]
 			}
 
 			const urlParts = url.split("/")
 			const filename = urlParts[urlParts.length - 1]
 			if (!filename || filename.length === 0) {
+				logger.debug("Could not extract filename from URL", { url })
 				return null
 			}
-			const publicId = filename.split(".")[0]
-			return publicId || null
-		} catch {
+
+			logger.debug("Successfully extracted public ID using fallback method", {
+				publicId: filename,
+				url,
+			})
+			return filename || null
+		} catch (error) {
+			logger.error(
+				"Error extracting public ID from Cloudinary URL",
+				error instanceof Error ? error : new Error(String(error)),
+				{ url }
+			)
 			return null
 		}
 	}

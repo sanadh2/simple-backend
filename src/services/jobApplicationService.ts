@@ -2,6 +2,8 @@ import mongoose from "mongoose"
 import { z } from "zod"
 
 import { JobApplication, StatusHistory } from "../models/index.js"
+import { logger } from "../utils/logger.js"
+import { fileUploadService } from "./index.js"
 
 export const createJobApplicationSchema = z.object({
 	company_name: z.string().min(1, "Company name is required"),
@@ -306,6 +308,45 @@ export class JobApplicationService {
 		jobApplicationId: string,
 		userId: string
 	): Promise<boolean> {
+		const application = await JobApplication.findOne({
+			_id: jobApplicationId,
+			user_id: userId,
+		}).lean()
+
+		if (!application) {
+			return false
+		}
+
+		const deletePromises: Promise<void>[] = []
+
+		if (
+			application.resume_url &&
+			fileUploadService.isProviderUrl(application.resume_url)
+		) {
+			deletePromises.push(
+				fileUploadService
+					.deleteFile(application.resume_url, "raw")
+					.catch((error) => {
+						logger.error("Failed to delete resume from CDN:", error)
+					})
+			)
+		}
+
+		if (
+			application.cover_letter_url &&
+			fileUploadService.isProviderUrl(application.cover_letter_url)
+		) {
+			deletePromises.push(
+				fileUploadService
+					.deleteFile(application.cover_letter_url, "raw")
+					.catch((error) => {
+						logger.error("Failed to delete cover letter from CDN:", error)
+					})
+			)
+		}
+
+		await Promise.allSettled(deletePromises)
+
 		const result = await JobApplication.deleteOne({
 			_id: jobApplicationId,
 			user_id: userId,
