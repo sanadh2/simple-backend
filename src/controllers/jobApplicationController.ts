@@ -77,10 +77,14 @@ export class JobApplicationController {
 		if (req.query.priority) filters.priority = req.query.priority as string
 		if (req.query.company_name)
 			filters.company_name = req.query.company_name as string
+		if (req.query.search) filters.search = req.query.search as string
 		if (req.query.startDate)
 			filters.startDate = new Date(req.query.startDate as string)
 		if (req.query.endDate)
 			filters.endDate = new Date(req.query.endDate as string)
+		if (req.query.sortBy) filters.sortBy = req.query.sortBy as string
+		if (req.query.sortOrder)
+			filters.sortOrder = req.query.sortOrder as "asc" | "desc"
 
 		const result = await JobApplicationService.getAll(
 			userId,

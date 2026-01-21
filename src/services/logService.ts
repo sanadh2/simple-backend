@@ -82,7 +82,7 @@ export class LogService {
 						{ $limit: limit },
 						{
 							$project: {
-								_id: 0,
+								_id: 1,
 								timestamp: 1,
 								level: 1,
 								correlation_id: 1,

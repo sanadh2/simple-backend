@@ -79,6 +79,9 @@ interface JobApplicationFilters {
 	company_name?: string
 	startDate?: Date
 	endDate?: Date
+	search?: string
+	sortBy?: string
+	sortOrder?: "asc" | "desc"
 }
 
 export class JobApplicationService {
@@ -190,7 +193,14 @@ export class JobApplicationService {
 			query.priority = filters.priority
 		}
 
-		if (filters.company_name) {
+		if (filters.search) {
+			// Search takes precedence - search both company name and job title
+			query.$or = [
+				{ company_name: { $regex: filters.search, $options: "i" } },
+				{ job_title: { $regex: filters.search, $options: "i" } },
+			]
+		} else if (filters.company_name) {
+			// Only use company_name filter if search is not provided
 			query.company_name = { $regex: filters.company_name, $options: "i" }
 		}
 
@@ -205,12 +215,13 @@ export class JobApplicationService {
 			query.application_date = dateFilter
 		}
 
+		// Build sort object
+		const sortField = filters.sortBy || "application_date"
+		const sortOrder = filters.sortOrder === "asc" ? 1 : -1
+		const sort: Record<string, 1 | -1> = { [sortField]: sortOrder }
+
 		const [applications, totalCount] = await Promise.all([
-			JobApplication.find(query)
-				.sort({ application_date: -1 })
-				.skip(skip)
-				.limit(limit)
-				.lean(),
+			JobApplication.find(query).sort(sort).skip(skip).limit(limit).lean(),
 			JobApplication.countDocuments(query),
 		])
 
