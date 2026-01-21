@@ -1,5 +1,8 @@
 import mongoose, { Document, Schema } from "mongoose"
 
+import { Interview } from "./Interview"
+import { StatusHistory } from "./StatusHistory"
+
 export type JobStatus =
 	| "Wishlist"
 	| "Applied"
@@ -131,6 +134,37 @@ const jobApplicationSchema = new Schema<IJobApplication>(
 jobApplicationSchema.index({ user_id: 1, application_date: -1 })
 jobApplicationSchema.index({ user_id: 1, status: 1 })
 jobApplicationSchema.index({ user_id: 1, company_name: 1 })
+
+jobApplicationSchema.pre(
+	["deleteOne", "findOneAndDelete"],
+	{ document: false, query: true },
+	async function () {
+		const filter = this.getFilter() as Record<string, unknown>
+		const jobApplicationId = filter._id as
+			| mongoose.Types.ObjectId
+			| string
+			| undefined
+
+		if (!jobApplicationId) {
+			return
+		}
+
+		const applicationId =
+			typeof jobApplicationId === "string"
+				? new mongoose.Types.ObjectId(jobApplicationId)
+				: jobApplicationId
+
+		// Delete related status history records
+		await StatusHistory.deleteMany({
+			job_application_id: applicationId,
+		})
+
+		// Delete related interviews
+		await Interview.deleteMany({
+			job_application_id: applicationId,
+		})
+	}
+)
 
 export const JobApplication = mongoose.model<IJobApplication>(
 	"JobApplication",

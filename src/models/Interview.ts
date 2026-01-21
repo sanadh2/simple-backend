@@ -49,7 +49,6 @@ const interviewSchema = new Schema<IInterview>(
 		scheduled_at: {
 			type: Date,
 			required: [true, "Scheduled date and time is required"],
-			index: true,
 		},
 		interviewer_name: {
 			type: String,

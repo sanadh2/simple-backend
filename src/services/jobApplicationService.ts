@@ -328,7 +328,7 @@ export class JobApplicationService {
 			return false
 		}
 
-		const deletePromises: Promise<void>[] = []
+		const deletePromises: Promise<unknown>[] = []
 
 		if (
 			application.resume_url &&
@@ -358,11 +358,29 @@ export class JobApplicationService {
 
 		await Promise.allSettled(deletePromises)
 
-		const result = await JobApplication.deleteOne({
+		// Delete the job application
+		// Note: Related StatusHistory and Interview records are automatically
+		// deleted via Mongoose middleware (cascade delete) defined in the model
+		const deletePromise = JobApplication.deleteOne({
 			_id: jobApplicationId,
 			user_id: userId,
 		})
+		deletePromises.push(deletePromise)
 
-		return result.deletedCount > 0
+		const result = await Promise.allSettled(deletePromises)
+		const success = result.every((r) => r.status === "fulfilled")
+		if (success) {
+			logger.info("Job application deleted with cascade", {
+				jobApplicationId,
+				userId,
+			})
+		} else {
+			logger.error("Failed to delete job application with cascade", {
+				jobApplicationId,
+				userId,
+				result,
+			})
+		}
+		return success
 	}
 }
