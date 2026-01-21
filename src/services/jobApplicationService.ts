@@ -6,6 +6,7 @@ import { logger } from "../utils/logger.js"
 import { fileUploadService } from "./index.js"
 
 export const createJobApplicationSchema = z.object({
+	company_id: z.string().optional(),
 	company_name: z.string().min(1, "Company name is required"),
 	job_title: z.string().min(1, "Job title is required"),
 	job_description: z.string().optional(),
@@ -97,6 +98,10 @@ export class JobApplicationService {
 			status: data.status,
 			location_type: data.location_type,
 			priority: data.priority,
+		}
+
+		if (data.company_id) {
+			jobApplicationData.company_id = data.company_id
 		}
 
 		if (data.job_description) {

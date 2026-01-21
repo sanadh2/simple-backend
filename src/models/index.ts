@@ -1,4 +1,10 @@
 export {
+	Company,
+	type CompanySize,
+	type FundingStage,
+	type ICompany,
+} from "./Company.js"
+export {
 	type IInterview,
 	Interview,
 	type InterviewFormat,

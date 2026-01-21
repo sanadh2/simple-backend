@@ -25,6 +25,7 @@ import { logQueue } from "./queues/logQueue.js"
 import {
 	analyticsRoutes,
 	authRoutes,
+	companyRoutes,
 	interviewRoutes,
 	jobApplicationRoutes,
 	logRoutes,
@@ -249,6 +250,7 @@ app.get(
 
 app.use("/api/auth", authRoutes)
 app.use("/api/analytics", analyticsRoutes)
+app.use("/api/companies", companyRoutes)
 app.use("/api/interviews", interviewRoutes)
 app.use("/api/job-applications", jobApplicationRoutes)
 app.use("/api/logs", logRoutes)

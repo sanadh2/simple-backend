@@ -19,6 +19,7 @@ export type PriorityLevel = "high" | "medium" | "low"
 
 export interface IJobApplication extends Document {
 	user_id: mongoose.Types.ObjectId
+	company_id?: mongoose.Types.ObjectId
 	company_name: string
 	job_title: string
 	job_description?: string
@@ -43,6 +44,11 @@ const jobApplicationSchema = new Schema<IJobApplication>(
 			type: Schema.Types.ObjectId,
 			ref: "User",
 			required: [true, "User ID is required"],
+			index: true,
+		},
+		company_id: {
+			type: Schema.Types.ObjectId,
+			ref: "Company",
 			index: true,
 		},
 		company_name: {
@@ -134,6 +140,7 @@ const jobApplicationSchema = new Schema<IJobApplication>(
 jobApplicationSchema.index({ user_id: 1, application_date: -1 })
 jobApplicationSchema.index({ user_id: 1, status: 1 })
 jobApplicationSchema.index({ user_id: 1, company_name: 1 })
+jobApplicationSchema.index({ user_id: 1, company_id: 1 })
 
 jobApplicationSchema.pre(
 	["deleteOne", "findOneAndDelete"],

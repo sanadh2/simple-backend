@@ -1,6 +1,13 @@
 export { AnalyticsService } from "./analyticsService.js"
 export { AuthService } from "./authService.js"
 export { cloudinaryUploadService as fileUploadService } from "./cloudinaryUploadService.js"
+export {
+	CompanyService,
+	type CreateCompanyInput,
+	createCompanySchema,
+	type UpdateCompanyInput,
+	updateCompanySchema,
+} from "./companyService.js"
 export { EmailService } from "./emailService.js"
 export type { FileUploadService, UploadResult } from "./fileUploadService.js"
 export {
