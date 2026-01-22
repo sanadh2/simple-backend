@@ -32,6 +32,7 @@ export interface IJobApplication extends Document {
 	job_posting_url?: string
 	application_method?: string
 	priority: PriorityLevel
+	resume_id?: mongoose.Types.ObjectId
 	resume_url?: string
 	cover_letter_url?: string
 	createdAt: Date
@@ -115,6 +116,11 @@ const jobApplicationSchema = new Schema<IJobApplication>(
 			enum: ["high", "medium", "low"],
 			required: [true, "Priority is required"],
 			default: "medium",
+		},
+		resume_id: {
+			type: Schema.Types.ObjectId,
+			ref: "Resume",
+			index: true,
 		},
 		resume_url: {
 			type: String,

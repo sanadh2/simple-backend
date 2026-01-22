@@ -26,3 +26,10 @@ export {
 } from "./jobApplicationService.js"
 export { LogService } from "./logService.js"
 export { OTPService } from "./otpService.js"
+export {
+	type CreateResumeInput,
+	createResumeSchema,
+	ResumeService,
+	type UpdateResumeInput,
+	updateResumeSchema,
+} from "./resumeService.js"

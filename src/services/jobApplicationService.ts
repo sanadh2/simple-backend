@@ -28,6 +28,7 @@ export const createJobApplicationSchema = z.object({
 	job_posting_url: z.url("Invalid URL format").optional().or(z.literal("")),
 	application_method: z.string().optional(),
 	priority: z.enum(["high", "medium", "low"]),
+	resume_id: z.string().optional(),
 	resume_url: z.url("Invalid URL format").optional().or(z.literal("")),
 	cover_letter_url: z.url("Invalid URL format").optional().or(z.literal("")),
 })
@@ -121,6 +122,9 @@ export class JobApplicationService {
 		}
 		if (data.application_method) {
 			jobApplicationData.application_method = data.application_method
+		}
+		if (data.resume_id) {
+			jobApplicationData.resume_id = data.resume_id
 		}
 		if (data.resume_url) {
 			jobApplicationData.resume_url = data.resume_url
