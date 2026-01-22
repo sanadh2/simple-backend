@@ -40,7 +40,7 @@ import { startLogWorker, stopLogWorker } from "./workers/logWorker.js"
 const app = express()
 const port = env.PORT
 
-app.set("trust proxy", true)
+app.set("trust proxy", 1)
 
 await connectDatabase()
 
