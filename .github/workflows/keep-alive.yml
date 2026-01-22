@@ -5,6 +5,7 @@ on:
     # Runs every 8 minutes from 9 AM to 6 PM IST (3:30 AM to 12:30 PM UTC)
     # IST is UTC+5:30, so 9 AM IST = 3:30 AM UTC, 6 PM IST = 12:30 PM UTC
     - cron: '*/8 3-12 * * *'
+  workflow_dispatch: 
 
 jobs:
   ping:
