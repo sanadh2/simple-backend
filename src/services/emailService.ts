@@ -5,6 +5,7 @@ import path from "path"
 import { fileURLToPath } from "url"
 
 import { env } from "../config/env.js"
+import type { DeviceInfo } from "../types/deviceFingerprint.js"
 import { logger } from "../utils/logger.js"
 
 const __filename = fileURLToPath(import.meta.url)
@@ -143,6 +144,34 @@ export class EmailService {
 				first_name,
 				otp,
 				expiryMinutes: env.OTP_EXPIRY_MINUTES,
+				appName: env.EMAIL_FROM_NAME,
+			},
+		})
+	}
+
+	static async sendNewDeviceAlert(
+		email: string,
+		first_name: string,
+		deviceInfo: DeviceInfo
+	): Promise<void> {
+		const loginTime = new Date().toLocaleString("en-US", {
+			weekday: "long",
+			year: "numeric",
+			month: "long",
+			day: "numeric",
+			hour: "2-digit",
+			minute: "2-digit",
+			timeZoneName: "short",
+		})
+
+		await this.sendEmail({
+			to: email,
+			subject: "New Device Login Alert",
+			template: "new-device-alert",
+			context: {
+				first_name,
+				deviceInfo,
+				loginTime,
 				appName: env.EMAIL_FROM_NAME,
 			},
 		})

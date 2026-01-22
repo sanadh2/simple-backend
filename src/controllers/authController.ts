@@ -5,6 +5,10 @@ import { env } from "../config/env.js"
 import { AppError, asyncHandler } from "../middleware/errorHandler.js"
 import { User } from "../models/index.js"
 import { AuthService, EmailService, OTPService } from "../services/index.js"
+import {
+	fingerprintExists,
+	saveDeviceFingerprint,
+} from "../utils/deviceFingerprintService.js"
 import { Logger, logger } from "../utils/logger.js"
 import { ResponseHandler } from "../utils/responseHandler.js"
 
@@ -139,6 +143,20 @@ export class AuthController {
 			userId: user._id.toString(),
 		})
 
+		if (req.deviceFingerprint) {
+			saveDeviceFingerprint(
+				req.deviceFingerprint,
+				user._id.toString(),
+				req.sessionID,
+				"register"
+			).catch((error) => {
+				logger.error("Failed to save device fingerprint on registration", {
+					error: error instanceof Error ? error.message : "Unknown error",
+					userId: user._id.toString(),
+				})
+			})
+		}
+
 		ResponseHandler.success(res, 201, {
 			message: "Registration successful. Please verify your email.",
 			data: {
@@ -260,10 +278,52 @@ export class AuthController {
 			maxAge: 15 * 60 * 1000,
 		})
 
-		// Set isAuthenticated cookie for client-side middleware
 		res.cookie("isAuthenticated", "true", authStatusCookieOptions)
 
 		Logger.setContext({ userId: user._id.toString() })
+
+		if (req.deviceFingerprint) {
+			const userId = user._id.toString()
+			const fingerprint = req.deviceFingerprint
+			const fingerprintHash = fingerprint.fingerprintHash
+
+			fingerprintExists(fingerprintHash, userId)
+				.then((isNewDevice) => {
+					return saveDeviceFingerprint(
+						fingerprint,
+						userId,
+						req.sessionID,
+						"login"
+					).then(() => {
+						if (isNewDevice) {
+							logger.info("User logged in from new device", {
+								userId,
+								fingerprintHash,
+								deviceInfo: fingerprint.deviceInfo,
+							})
+
+							EmailService.sendNewDeviceAlert(
+								user.email,
+								user.first_name,
+								fingerprint.deviceInfo
+							).catch((error) => {
+								logger.error("Failed to send new device alert email", {
+									error:
+										error instanceof Error ? error.message : "Unknown error",
+									userId,
+									email: user.email,
+								})
+							})
+						}
+					})
+				})
+				.catch((error) => {
+					logger.error("Failed to process device fingerprint on login", {
+						error: error instanceof Error ? error.message : "Unknown error",
+						userId,
+					})
+				})
+		}
 
 		logger.info("User logged in successfully", {
 			email: user.email,
@@ -334,7 +394,6 @@ export class AuthController {
 			path: "/",
 		})
 
-		// Clear isAuthenticated cookie
 		res.clearCookie("isAuthenticated", {
 			httpOnly: false,
 			secure: env.NODE_ENV === "production",
@@ -372,7 +431,6 @@ export class AuthController {
 			path: "/",
 		})
 
-		// Clear isAuthenticated cookie
 		res.clearCookie("isAuthenticated", {
 			httpOnly: false,
 			secure: env.NODE_ENV === "production",
@@ -815,7 +873,6 @@ export class AuthController {
 				maxAge: 15 * 60 * 1000,
 			})
 
-			// Set isAuthenticated cookie for client-side middleware
 			res.cookie("isAuthenticated", "true", authStatusCookieOptions)
 
 			Logger.setContext({ userId: user._id.toString() })

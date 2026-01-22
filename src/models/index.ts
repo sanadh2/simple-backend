@@ -5,6 +5,10 @@ export {
 	type ICompany,
 } from "./Company.js"
 export {
+	DeviceFingerprint,
+	type IDeviceFingerprint,
+} from "./DeviceFingerprint.js"
+export {
 	type IInterview,
 	Interview,
 	type InterviewFormat,

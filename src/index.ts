@@ -13,6 +13,7 @@ import { env } from "./config/env.js"
 import { redisConnection } from "./config/redis.js"
 import { swaggerSpec } from "./config/swagger.js"
 import { correlation_idMiddleware } from "./middleware/correlationId.js"
+import { deviceFingerprintMiddleware } from "./middleware/deviceFingerprint.js"
 import {
 	AppError,
 	asyncHandler,
@@ -48,6 +49,9 @@ startLogWorker()
 
 app.use(correlation_idMiddleware)
 app.use(requestLoggerMiddleware)
+// Device fingerprinting middleware - extracts device info and creates unique fingerprint
+// Must be applied early so fingerprint is available for all routes
+app.use(deviceFingerprintMiddleware)
 
 app.use(
 	cors({

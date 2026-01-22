@@ -29,8 +29,10 @@
 		"multer": "^2.0.2",
 		"nodemailer": "^7.0.12",
 		"rate-limit-redis": "^4.3.1",
+		"request-ip": "^3.3.0",
 		"swagger-jsdoc": "^6.2.8",
 		"swagger-ui-express": "^5.0.1",
+		"ua-parser-js": "^2.0.8",
 		"zod": "^4.3.5"
 	},
 	"scripts": {
@@ -50,6 +52,8 @@
 		"@types/express": "^5.0.6",
 		"@types/mongoose": "^5.11.96",
 		"@types/node": "^25.0.3",
+		"@types/request-ip": "^0.0.41",
+		"@types/ua-parser-js": "^0.7.39",
 		"cpx2": "^8.0.0",
 		"eslint": "^9.39.2",
 		"eslint-config-prettier": "^10.1.8",
