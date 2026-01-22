@@ -217,7 +217,8 @@ app.use(
 			maxAge: env.SESSION_MAX_AGE,
 			httpOnly: true,
 			secure: env.NODE_ENV === "production",
-			sameSite: "strict",
+			sameSite: env.NODE_ENV === "production" ? "none" : "lax",
+			path: "/",
 		},
 		name: "sessionId",
 	})
