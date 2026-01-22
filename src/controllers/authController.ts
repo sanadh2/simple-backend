@@ -54,6 +54,14 @@ const cookieOptions: CookieOptions = {
 	path: "/",
 }
 
+const authStatusCookieOptions: CookieOptions = {
+	httpOnly: false,
+	secure: env.NODE_ENV === "production",
+	sameSite: env.NODE_ENV === "production" ? "none" : "lax",
+	path: "/",
+	maxAge: 7 * 24 * 60 * 60 * 1000,
+}
+
 export class AuthController {
 	static register = asyncHandler(async (req: Request, res: Response) => {
 		logger.debug("Registration request received", {
@@ -252,6 +260,9 @@ export class AuthController {
 			maxAge: 15 * 60 * 1000,
 		})
 
+		// Set isAuthenticated cookie for client-side middleware
+		res.cookie("isAuthenticated", "true", authStatusCookieOptions)
+
 		Logger.setContext({ userId: user._id.toString() })
 
 		logger.info("User logged in successfully", {
@@ -323,6 +334,14 @@ export class AuthController {
 			path: "/",
 		})
 
+		// Clear isAuthenticated cookie
+		res.clearCookie("isAuthenticated", {
+			httpOnly: false,
+			secure: env.NODE_ENV === "production",
+			sameSite: env.NODE_ENV === "production" ? "none" : "lax",
+			path: "/",
+		})
+
 		if (req.userId) {
 			logger.info("User logged out", { userId: req.userId })
 		}
@@ -350,6 +369,14 @@ export class AuthController {
 			httpOnly: true,
 			secure: env.NODE_ENV === "production",
 			sameSite: "strict",
+			path: "/",
+		})
+
+		// Clear isAuthenticated cookie
+		res.clearCookie("isAuthenticated", {
+			httpOnly: false,
+			secure: env.NODE_ENV === "production",
+			sameSite: env.NODE_ENV === "production" ? "none" : "lax",
 			path: "/",
 		})
 
@@ -787,6 +814,9 @@ export class AuthController {
 				...cookieOptions,
 				maxAge: 15 * 60 * 1000,
 			})
+
+			// Set isAuthenticated cookie for client-side middleware
+			res.cookie("isAuthenticated", "true", authStatusCookieOptions)
 
 			Logger.setContext({ userId: user._id.toString() })
 
