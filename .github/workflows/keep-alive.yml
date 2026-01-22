@@ -1,0 +1,16 @@
+name: Keep Render Alive (9 AM - 6 PM IST)
+
+on:
+  schedule:
+    # Runs every 8 minutes from 9 AM to 6 PM IST (3:30 AM to 12:30 PM UTC)
+    # IST is UTC+5:30, so 9 AM IST = 3:30 AM UTC, 6 PM IST = 12:30 PM UTC
+    - cron: '*/8 3-12 * * *'
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Render service
+        run: |
+          curl -f https://simple-backend-n13g.onrender.com/health || curl -f https://simple-backend-n13g.onrender.com/health
+        continue-on-error: true
