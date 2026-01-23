@@ -39,6 +39,7 @@ const deviceFingerprintSchema = new Schema<IDeviceFingerprint>(
 				type: String,
 				required: true,
 			},
+			clientFingerprint: String,
 			browserName: String,
 			browserVersion: String,
 			osName: String,

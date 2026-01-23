@@ -5,6 +5,8 @@
 export interface DeviceInfo {
 	/** IP address of the client */
 	ip: string
+	/** Client-side fingerprint from FingerprintJS (visitor ID) */
+	clientFingerprint: string | undefined
 	/** Browser name (e.g., "Chrome", "Firefox", "Safari") */
 	browserName: string | undefined
 	/** Browser version (e.g., "120.0.0.0") */

@@ -278,7 +278,9 @@ export class AuthController {
 			const fingerprintHash = fingerprint.fingerprintHash
 
 			fingerprintExists(fingerprintHash, userId)
-				.then((isNewDevice) => {
+				.then((deviceExists) => {
+					const isNewDevice = !deviceExists
+
 					return saveDeviceFingerprint(
 						fingerprint,
 						userId,
