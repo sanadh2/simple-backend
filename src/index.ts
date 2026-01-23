@@ -272,9 +272,9 @@ app.use(notFoundHandler)
 app.use(errorHandler)
 
 const server = app.listen(port, () => {
-	logger.info(`✓ Server running at http://localhost:${port}`, undefined, true)
+	logger.info(`✓ Server running at ${env.DOMAIN}:${port}`, undefined, true)
 	logger.info(
-		`✓ API Documentation available at http://localhost:${port}/api-docs`,
+		`✓ API Documentation available at http://${env.DOMAIN}:${port}/api-docs`,
 		undefined,
 		true
 	)

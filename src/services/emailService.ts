@@ -104,6 +104,8 @@ export class EmailService {
 				template: options.template,
 			})
 		} catch (error) {
+			console.log("error sending email", error)
+			console.dir(error, { depth: null })
 			logger.error("Failed to send email", {
 				error: error instanceof Error ? error.message : "Unknown error",
 				to: options.to,

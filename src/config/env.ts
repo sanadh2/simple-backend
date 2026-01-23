@@ -1,6 +1,7 @@
 import { z } from "zod"
 
 const envSchema = z.object({
+	DOMAIN: z.string().default("localhost"),
 	PORT: z
 		.string()
 		.default("3000")
