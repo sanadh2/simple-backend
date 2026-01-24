@@ -47,30 +47,26 @@ export async function saveDeviceFingerprint(
 	eventType: string = "unknown"
 ): Promise<void> {
 	try {
-		// Save the device fingerprint to the database
-		// This creates a record that links the device to the user and event
-		const fingerprintData: {
-			fingerprintHash: string
-			deviceInfo: DeviceFingerprintType["deviceInfo"]
-			userId?: mongoose.Types.ObjectId
-			sessionId?: string
-			eventType: string
-			createdAt: Date
-		} = {
+		const d = fingerprint.deviceInfo
+		const fingerprintData: Record<string, unknown> = {
 			fingerprintHash: fingerprint.fingerprintHash,
-			deviceInfo: fingerprint.deviceInfo,
+			ip: d.ip,
+			client_fingerprint: d.clientFingerprint,
+			browser_name: d.browserName,
+			browser_version: d.browserVersion,
+			os_name: d.osName,
+			os_version: d.osVersion,
+			device_type: d.deviceType,
+			accept_language: d.acceptLanguage,
+			accept_encoding: d.acceptEncoding,
 			eventType,
-			createdAt: fingerprint.createdAt,
 		}
-
 		if (userId) {
 			fingerprintData.userId = new mongoose.Types.ObjectId(userId)
 		}
-
 		if (sessionId) {
 			fingerprintData.sessionId = sessionId
 		}
-
 		await DeviceFingerprint.create(fingerprintData)
 
 		logger.info("Device fingerprint saved to database", {

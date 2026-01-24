@@ -3,7 +3,7 @@ import type { StringValue } from "ms"
 
 import { env } from "../config/env.js"
 import { AppError } from "../middleware/errorHandler.js"
-import { type IUser, User } from "../models/index.js"
+import { RefreshToken, type IUser, User } from "../models/index.js"
 import { logger } from "../utils/logger.js"
 
 export interface TokenPayload {
@@ -76,9 +76,9 @@ export class AuthService {
 			userId: user._id.toString(),
 		})
 
-		// Store refresh token in database
-		await User.findByIdAndUpdate(user._id, {
-			$push: { refresh_tokens: refreshToken },
+		await RefreshToken.create({
+			user_id: user._id,
+			token: refreshToken,
 		})
 
 		logger.debug("Refresh token stored successfully", {
@@ -171,16 +171,18 @@ export class AuthService {
 			userId: decoded.userId,
 		})
 
-		// Check if refresh token exists in database
-		const user = await User.findOne({
-			_id: decoded.userId,
-			refresh_tokens: refreshToken,
+		const ref = await RefreshToken.findOne({
+			user_id: decoded.userId,
+			token: refreshToken,
 		})
-
-		if (!user) {
+		if (!ref) {
 			logger.warn("Refresh token not found in database", {
 				userId: decoded.userId,
 			})
+			throw new AppError("Invalid refresh token", 401)
+		}
+		const user = await User.findById(decoded.userId)
+		if (!user) {
 			throw new AppError("Invalid refresh token", 401)
 		}
 
@@ -211,8 +213,9 @@ export class AuthService {
 		userId: string,
 		refreshToken: string
 	): Promise<void> {
-		await User.findByIdAndUpdate(userId, {
-			$pull: { refresh_tokens: refreshToken },
+		await RefreshToken.deleteOne({
+			user_id: userId,
+			token: refreshToken,
 		})
 	}
 
@@ -220,12 +223,12 @@ export class AuthService {
 	 * Revoke all refresh tokens for a user (logout from all devices)
 	 */
 	static async revokeAllRefreshTokens(userId: string): Promise<void> {
-		await User.findByIdAndUpdate(userId, {
-			$set: {
-				refresh_tokens: [],
-				tokens_invalidated_at: new Date(),
-			},
-		})
+		await Promise.all([
+			RefreshToken.deleteMany({ user_id: userId }),
+			User.findByIdAndUpdate(userId, {
+				$set: { tokens_invalidated_at: new Date() },
+			}),
+		])
 	}
 
 	/**

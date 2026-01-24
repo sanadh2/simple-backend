@@ -1,5 +1,7 @@
 import mongoose, { Document, Schema } from "mongoose"
 
+import { InterviewChecklistItem } from "./InterviewChecklistItem.js"
+
 export type InterviewType =
 	| "phone_screen"
 	| "technical"
@@ -20,7 +22,6 @@ export interface IInterview extends Document {
 	duration_minutes?: number
 	notes?: string
 	feedback?: string
-	preparation_checklist?: string[]
 	createdAt: Date
 	updatedAt: Date
 }
@@ -75,10 +76,6 @@ const interviewSchema = new Schema<IInterview>(
 			type: String,
 			trim: true,
 		},
-		preparation_checklist: {
-			type: [String],
-			default: [],
-		},
 	},
 	{
 		timestamps: true,
@@ -95,6 +92,24 @@ const interviewSchema = new Schema<IInterview>(
 interviewSchema.index({ job_application_id: 1, scheduled_at: -1 })
 interviewSchema.index({ job_application_id: 1, interview_type: 1 })
 interviewSchema.index({ scheduled_at: 1 })
+
+interviewSchema.pre(
+	["deleteOne", "findOneAndDelete"],
+	{ document: false, query: true },
+	async function () {
+		const filter = this.getFilter() as Record<string, unknown>
+		const interviewId = filter._id as
+			| mongoose.Types.ObjectId
+			| string
+			| undefined
+		if (!interviewId) return
+		const id =
+			typeof interviewId === "string"
+				? new mongoose.Types.ObjectId(interviewId)
+				: interviewId
+		await InterviewChecklistItem.deleteMany({ interview_id: id })
+	}
+)
 
 export const Interview = mongoose.model<IInterview>(
 	"Interview",

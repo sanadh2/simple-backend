@@ -1,7 +1,7 @@
 import mongoose from "mongoose"
 import { z } from "zod"
 
-import { Company, JobApplication } from "../models/index.js"
+import { Company, CompanyAttribute, JobApplication } from "../models/index.js"
 import { logger } from "../utils/logger.js"
 
 export const createCompanySchema = z.object({
@@ -93,10 +93,7 @@ export class CompanyService {
 		const companyData: Record<string, unknown> = {
 			user_id: userId,
 			name: data.name,
-			pros: data.pros || [],
-			cons: data.cons || [],
 		}
-
 		if (data.size) companyData.size = data.size
 		if (data.industry) companyData.industry = data.industry
 		if (data.funding_stage) companyData.funding_stage = data.funding_stage
@@ -106,9 +103,27 @@ export class CompanyService {
 			companyData.interview_process_overview = data.interview_process_overview
 
 		const company = await Company.create(companyData)
+		const pros = data.pros || []
+		const cons = data.cons || []
+		if (pros.length + cons.length > 0) {
+			await CompanyAttribute.insertMany([
+				...pros.map((value) => ({
+					company_id: company._id,
+					kind: "pro" as const,
+					value,
+				})),
+				...cons.map((value) => ({
+					company_id: company._id,
+					kind: "con" as const,
+					value,
+				})),
+			])
+		}
 
 		return {
 			...company.toObject(),
+			pros,
+			cons,
 			application_count: 0,
 			applications: [],
 		} as ICompanyWithApplications
@@ -128,18 +143,25 @@ export class CompanyService {
 			return null
 		}
 
-		const applications = includeApplications
-			? await JobApplication.find({
-					company_id: companyId,
-					user_id: userId,
-				})
-					.select("_id job_title status application_date")
-					.sort({ application_date: -1 })
-					.lean()
-			: []
+		const [attributes, applications] = await Promise.all([
+			CompanyAttribute.find({ company_id: companyId }).lean(),
+			includeApplications
+				? JobApplication.find({
+						company_id: companyId,
+						user_id: userId,
+					})
+						.select("_id job_title status application_date")
+						.sort({ application_date: -1 })
+						.lean()
+				: Promise.resolve([]),
+		])
+		const pros = attributes.filter((a) => a.kind === "pro").map((a) => a.value)
+		const cons = attributes.filter((a) => a.kind === "con").map((a) => a.value)
 
 		return {
 			...company,
+			pros,
+			cons,
 			application_count: includeApplications
 				? applications.length
 				: await JobApplication.countDocuments({
@@ -191,13 +213,33 @@ export class CompanyService {
 			Company.countDocuments(query),
 		])
 
+		const companyIds = companies.map((c) => c._id)
+		const attributes =
+			companyIds.length > 0
+				? await CompanyAttribute.find({
+						company_id: { $in: companyIds },
+					}).lean()
+				: []
+		const attrsByCompany = new Map<string, { pros: string[]; cons: string[] }>()
+		for (const c of companyIds) {
+			attrsByCompany.set(c.toString(), { pros: [], cons: [] })
+		}
+		for (const a of attributes) {
+			const k = a.company_id.toString()
+			const bag = attrsByCompany.get(k)
+			if (bag) {
+				if (a.kind === "pro") bag.pros.push(a.value)
+				else bag.cons.push(a.value)
+			}
+		}
+
 		// Get application counts for each company
-		const companyIds = companies.map((c) => c._id.toString())
+		const companyIdStrs = companyIds.map((c) => c.toString())
 		const applicationCountsResult = await JobApplication.aggregate([
 			{
 				$match: {
 					company_id: {
-						$in: companyIds.map((id) => new mongoose.Types.ObjectId(id)),
+						$in: companyIds,
 					},
 					user_id: new mongoose.Types.ObjectId(userId),
 				},
@@ -219,11 +261,19 @@ export class CompanyService {
 			countMap.set(item._id.toString(), item.count)
 		}
 
-		const companiesWithCounts = companies.map((company) => ({
-			...company,
-			application_count: countMap.get(company._id.toString()) || 0,
-			applications: [],
-		})) as ICompanyWithApplications[]
+		const companiesWithCounts = companies.map((company) => {
+			const attrs = attrsByCompany.get(company._id.toString()) ?? {
+				pros: [] as string[],
+				cons: [] as string[],
+			}
+			return {
+				...company,
+				pros: attrs.pros,
+				cons: attrs.cons,
+				application_count: countMap.get(company._id.toString()) || 0,
+				applications: [],
+			}
+		}) as ICompanyWithApplications[]
 
 		const totalPages = Math.ceil(totalCount / limit)
 
@@ -264,7 +314,6 @@ export class CompanyService {
 		}
 
 		const updateData: Record<string, unknown> = {}
-
 		if (data.name !== undefined) updateData.name = data.name
 		if (data.size !== undefined) updateData.size = data.size
 		if (data.industry !== undefined) updateData.industry = data.industry
@@ -274,10 +323,23 @@ export class CompanyService {
 			updateData.glassdoor_url = data.glassdoor_url || undefined
 		if (data.culture_notes !== undefined)
 			updateData.culture_notes = data.culture_notes
-		if (data.pros !== undefined) updateData.pros = data.pros
-		if (data.cons !== undefined) updateData.cons = data.cons
 		if (data.interview_process_overview !== undefined)
 			updateData.interview_process_overview = data.interview_process_overview
+
+		if (data.pros !== undefined || data.cons !== undefined) {
+			const existing = await CompanyAttribute.find({ company_id: companyId }).lean()
+			const existingPros = existing.filter((a) => a.kind === "pro").map((a) => a.value)
+			const existingCons = existing.filter((a) => a.kind === "con").map((a) => a.value)
+			await CompanyAttribute.deleteMany({ company_id: companyId })
+			const pros = data.pros ?? existingPros
+			const cons = data.cons ?? existingCons
+			if (pros.length > 0 || cons.length > 0) {
+				await CompanyAttribute.insertMany([
+					...pros.map((value: string) => ({ company_id: companyId, kind: "pro" as const, value })),
+					...cons.map((value: string) => ({ company_id: companyId, kind: "con" as const, value })),
+				])
+			}
+		}
 
 		const company = await Company.findOneAndUpdate(
 			{ _id: companyId, user_id: userId },
@@ -289,13 +351,20 @@ export class CompanyService {
 			return null
 		}
 
-		const applicationCount = await JobApplication.countDocuments({
-			company_id: companyId,
-			user_id: userId,
-		})
+		const [attrs, applicationCount] = await Promise.all([
+			CompanyAttribute.find({ company_id: companyId }).lean(),
+			JobApplication.countDocuments({
+				company_id: companyId,
+				user_id: userId,
+			}),
+		])
+		const pros = attrs.filter((a) => a.kind === "pro").map((a) => a.value)
+		const cons = attrs.filter((a) => a.kind === "con").map((a) => a.value)
 
 		return {
 			...company,
+			pros,
+			cons,
 			application_count: applicationCount,
 			applications: [],
 		} as ICompanyWithApplications

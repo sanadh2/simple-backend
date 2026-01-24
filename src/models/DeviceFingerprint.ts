@@ -1,32 +1,23 @@
 import mongoose, { Document, Schema } from "mongoose"
 
-import type { DeviceInfo } from "../types/deviceFingerprint.js"
-
-/**
- * Device Fingerprint Model Interface
- * Represents a device fingerprint stored in the database
- */
 export interface IDeviceFingerprint extends Document {
-	/** SHA-256 hash of the device info - used as unique identifier */
 	fingerprintHash: string
-	/** Detailed device information */
-	deviceInfo: DeviceInfo
-	/** Optional user ID to associate the fingerprint with */
+	ip: string
+	client_fingerprint?: string
+	browser_name?: string
+	browser_version?: string
+	os_name?: string
+	os_version?: string
+	device_type?: string
+	accept_language?: string
+	accept_encoding?: string
 	userId?: mongoose.Types.ObjectId
-	/** Optional session ID to link the fingerprint to */
 	sessionId?: string
-	/** Type of event that triggered the fingerprint capture */
 	eventType: string
-	/** Timestamp when this fingerprint was created */
 	createdAt: Date
-	/** Timestamp when this fingerprint was last updated */
 	updatedAt: Date
 }
 
-/**
- * Device Fingerprint Schema
- * Stores device fingerprints for user identification and security tracking
- */
 const deviceFingerprintSchema = new Schema<IDeviceFingerprint>(
 	{
 		fingerprintHash: {
@@ -34,19 +25,41 @@ const deviceFingerprintSchema = new Schema<IDeviceFingerprint>(
 			required: [true, "Fingerprint hash is required"],
 			index: true,
 		},
-		deviceInfo: {
-			ip: {
-				type: String,
-				required: true,
-			},
-			clientFingerprint: String,
-			browserName: String,
-			browserVersion: String,
-			osName: String,
-			osVersion: String,
-			deviceType: String,
-			acceptLanguage: String,
-			acceptEncoding: String,
+		ip: {
+			type: String,
+			required: [true, "IP is required"],
+		},
+		client_fingerprint: {
+			type: String,
+			trim: true,
+		},
+		browser_name: {
+			type: String,
+			trim: true,
+		},
+		browser_version: {
+			type: String,
+			trim: true,
+		},
+		os_name: {
+			type: String,
+			trim: true,
+		},
+		os_version: {
+			type: String,
+			trim: true,
+		},
+		device_type: {
+			type: String,
+			trim: true,
+		},
+		accept_language: {
+			type: String,
+			trim: true,
+		},
+		accept_encoding: {
+			type: String,
+			trim: true,
 		},
 		userId: {
 			type: Schema.Types.ObjectId,
@@ -74,7 +87,6 @@ const deviceFingerprintSchema = new Schema<IDeviceFingerprint>(
 	}
 )
 
-// Create compound indexes for common query patterns
 deviceFingerprintSchema.index({ fingerprintHash: 1, userId: 1 })
 deviceFingerprintSchema.index({ userId: 1, createdAt: -1 })
 

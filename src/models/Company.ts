@@ -1,5 +1,7 @@
 import mongoose, { Document, Schema } from "mongoose"
 
+import { CompanyAttribute } from "./CompanyAttribute.js"
+
 export type CompanySize =
 	| "startup"
 	| "small"
@@ -26,8 +28,6 @@ export interface ICompany extends Document {
 	funding_stage?: FundingStage
 	glassdoor_url?: string
 	culture_notes?: string
-	pros: string[]
-	cons: string[]
 	interview_process_overview?: string
 	createdAt: Date
 	updatedAt: Date
@@ -86,14 +86,6 @@ const companySchema = new Schema<ICompany>(
 			type: String,
 			trim: true,
 		},
-		pros: {
-			type: [String],
-			default: [],
-		},
-		cons: {
-			type: [String],
-			default: [],
-		},
 		interview_process_overview: {
 			type: String,
 			trim: true,
@@ -113,5 +105,20 @@ const companySchema = new Schema<ICompany>(
 
 companySchema.index({ user_id: 1, name: 1 }, { unique: true })
 companySchema.index({ user_id: 1, createdAt: -1 })
+
+companySchema.pre(
+	["deleteOne", "findOneAndDelete"],
+	{ document: false, query: true },
+	async function () {
+		const filter = this.getFilter() as Record<string, unknown>
+		const companyId = filter._id as mongoose.Types.ObjectId | string | undefined
+		if (!companyId) return
+		const id =
+			typeof companyId === "string"
+				? new mongoose.Types.ObjectId(companyId)
+				: companyId
+		await CompanyAttribute.deleteMany({ company_id: id })
+	}
+)
 
 export const Company = mongoose.model<ICompany>("Company", companySchema)

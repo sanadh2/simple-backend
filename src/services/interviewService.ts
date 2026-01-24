@@ -1,7 +1,11 @@
 import mongoose from "mongoose"
 import { z } from "zod"
 
-import { Interview, JobApplication } from "../models/index.js"
+import {
+	Interview,
+	InterviewChecklistItem,
+	JobApplication,
+} from "../models/index.js"
 import { logger } from "../utils/logger.js"
 
 export const createInterviewSchema = z.object({
@@ -67,28 +71,26 @@ export class InterviewService {
 			interview_type: data.interview_type,
 			scheduled_at: data.scheduled_at,
 			interview_format: data.interview_format,
-			preparation_checklist: data.preparation_checklist || [],
 		}
-
-		if (data.interviewer_name !== undefined) {
+		if (data.interviewer_name !== undefined)
 			interviewData.interviewer_name = data.interviewer_name
-		}
-		if (data.interviewer_role !== undefined) {
+		if (data.interviewer_role !== undefined)
 			interviewData.interviewer_role = data.interviewer_role
-		}
-		if (data.duration_minutes !== undefined) {
+		if (data.duration_minutes !== undefined)
 			interviewData.duration_minutes = data.duration_minutes
-		}
-		if (data.notes !== undefined) {
-			interviewData.notes = data.notes
-		}
-		if (data.feedback !== undefined) {
-			interviewData.feedback = data.feedback
-		}
+		if (data.notes !== undefined) interviewData.notes = data.notes
+		if (data.feedback !== undefined) interviewData.feedback = data.feedback
 
 		const interview = await Interview.create(
 			interviewData as unknown as Parameters<typeof Interview.create>[0]
 		)
+
+		const items = data.preparation_checklist || []
+		if (items.length > 0) {
+			await InterviewChecklistItem.insertMany(
+				items.map((item) => ({ interview_id: interview._id, item }))
+			)
+		}
 
 		logger.info("Interview created", {
 			interviewId: interview._id.toString(),
@@ -96,7 +98,7 @@ export class InterviewService {
 			userId,
 		})
 
-		return interview.toObject() as IInterview
+		return { ...interview.toObject(), preparation_checklist: items } as IInterview
 	}
 
 	static async getById(
@@ -119,7 +121,13 @@ export class InterviewService {
 			throw new Error("Interview not found or access denied")
 		}
 
-		return interview.toObject() as IInterview
+		const items = await InterviewChecklistItem.find({
+			interview_id: interviewId,
+		})
+			.sort({ createdAt: 1 })
+			.lean()
+		const preparation_checklist = items.map((i) => i.item)
+		return { ...interview.toObject(), preparation_checklist } as IInterview
 	}
 
 	static async getByJobApplicationId(
@@ -138,9 +146,29 @@ export class InterviewService {
 
 		const interviews = await Interview.find({
 			job_application_id: jobApplicationId,
-		}).sort({ scheduled_at: 1 })
+		})
+			.sort({ scheduled_at: 1 })
+			.lean()
 
-		return interviews.map((interview) => interview.toObject() as IInterview)
+		const interviewIds = interviews.map((i) => i._id)
+		const allItems =
+			interviewIds.length > 0
+				? await InterviewChecklistItem.find({
+						interview_id: { $in: interviewIds },
+					})
+						.sort({ interview_id: 1, createdAt: 1 })
+						.lean()
+				: []
+		const byInterview = new Map<string, string[]>()
+		for (const it of allItems) {
+			const k = it.interview_id.toString()
+			if (!byInterview.has(k)) byInterview.set(k, [])
+			byInterview.get(k)!.push(it.item)
+		}
+		return interviews.map((inv) => ({
+			...inv,
+			preparation_checklist: byInterview.get(inv._id.toString()) ?? [],
+		})) as IInterview[]
 	}
 
 	static async getAll(userId: string): Promise<IInterview[]> {
@@ -153,9 +181,29 @@ export class InterviewService {
 
 		const interviews = await Interview.find({
 			job_application_id: { $in: jobApplicationIds },
-		}).sort({ scheduled_at: -1 })
+		})
+			.sort({ scheduled_at: -1 })
+			.lean()
 
-		return interviews.map((interview) => interview.toObject() as IInterview)
+		const interviewIds = interviews.map((i) => i._id)
+		const allItems =
+			interviewIds.length > 0
+				? await InterviewChecklistItem.find({
+						interview_id: { $in: interviewIds },
+					})
+						.sort({ interview_id: 1, createdAt: 1 })
+						.lean()
+				: []
+		const byInterview = new Map<string, string[]>()
+		for (const it of allItems) {
+			const k = it.interview_id.toString()
+			if (!byInterview.has(k)) byInterview.set(k, [])
+			byInterview.get(k)!.push(it.item)
+		}
+		return interviews.map((inv) => ({
+			...inv,
+			preparation_checklist: byInterview.get(inv._id.toString()) ?? [],
+		})) as IInterview[]
 	}
 
 	static async update(
@@ -206,12 +254,22 @@ export class InterviewService {
 			updateData.duration_minutes = data.duration_minutes
 		if (data.notes !== undefined) updateData.notes = data.notes
 		if (data.feedback !== undefined) updateData.feedback = data.feedback
-		if (data.preparation_checklist !== undefined)
-			updateData.preparation_checklist = data.preparation_checklist
 		if (data.job_application_id !== undefined)
 			updateData.job_application_id = new mongoose.Types.ObjectId(
 				data.job_application_id
 			)
+
+		if (data.preparation_checklist !== undefined) {
+			await InterviewChecklistItem.deleteMany({ interview_id: interviewId })
+			if (data.preparation_checklist.length > 0) {
+				await InterviewChecklistItem.insertMany(
+					data.preparation_checklist.map((item) => ({
+						interview_id: interviewId,
+						item,
+					}))
+				)
+			}
+		}
 
 		const updatedInterview = await Interview.findByIdAndUpdate(
 			interviewId,
@@ -223,12 +281,15 @@ export class InterviewService {
 			return null
 		}
 
-		logger.info("Interview updated", {
-			interviewId,
-			userId,
+		const items = await InterviewChecklistItem.find({
+			interview_id: interviewId,
 		})
+			.sort({ createdAt: 1 })
+			.lean()
+		const preparation_checklist = items.map((i) => i.item)
 
-		return updatedInterview.toObject() as IInterview
+		logger.info("Interview updated", { interviewId, userId })
+		return { ...updatedInterview.toObject(), preparation_checklist } as IInterview
 	}
 
 	static async delete(interviewId: string, userId: string): Promise<boolean> {
@@ -278,8 +339,28 @@ export class InterviewService {
 				$gte: now,
 				$lte: futureDate,
 			},
-		}).sort({ scheduled_at: 1 })
+		})
+			.sort({ scheduled_at: 1 })
+			.lean()
 
-		return interviews.map((interview) => interview.toObject() as IInterview)
+		const interviewIds = interviews.map((i) => i._id)
+		const allItems =
+			interviewIds.length > 0
+				? await InterviewChecklistItem.find({
+						interview_id: { $in: interviewIds },
+					})
+						.sort({ interview_id: 1, createdAt: 1 })
+						.lean()
+				: []
+		const byInterview = new Map<string, string[]>()
+		for (const it of allItems) {
+			const k = it.interview_id.toString()
+			if (!byInterview.has(k)) byInterview.set(k, [])
+			byInterview.get(k)!.push(it.item)
+		}
+		return interviews.map((inv) => ({
+			...inv,
+			preparation_checklist: byInterview.get(inv._id.toString()) ?? [],
+		})) as IInterview[]
 	}
 }

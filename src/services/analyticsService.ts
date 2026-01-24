@@ -173,11 +173,19 @@ export class AnalyticsService {
 	static async getActiveSessionsAnalysis(): Promise<SessionAnalysis> {
 		const result = await User.aggregate([
 			{
+				$lookup: {
+					from: "refreshtokens",
+					localField: "_id",
+					foreignField: "user_id",
+					as: "_rt",
+				},
+			},
+			{
 				$project: {
 					email: 1,
 					first_name: 1,
 					last_name: 1,
-					sessionCount: { $size: { $ifNull: ["$refresh_tokens", []] } },
+					sessionCount: { $size: "$_rt" },
 				},
 			},
 			{
@@ -348,12 +356,17 @@ export class AnalyticsService {
 
 		return await User.aggregate([
 			{
+				$lookup: {
+					from: "refreshtokens",
+					localField: "_id",
+					foreignField: "user_id",
+					as: "_rt",
+				},
+			},
+			{
 				$match: {
 					createdAt: { $lt: inactiveDate },
-					$or: [
-						{ refresh_tokens: { $exists: false } },
-						{ refresh_tokens: { $size: 0 } },
-					],
+					$expr: { $eq: [{ $size: "$_rt" }, 0] },
 				},
 			},
 			{
@@ -429,13 +442,19 @@ export class AnalyticsService {
 	static async getCohortAnalysis(): Promise<CohortData[]> {
 		return await User.aggregate([
 			{
+				$lookup: {
+					from: "refreshtokens",
+					localField: "_id",
+					foreignField: "user_id",
+					as: "_rt",
+				},
+			},
+			{
 				$project: {
 					cohortMonth: {
 						$dateToString: { format: "%Y-%m", date: "$createdAt" },
 					},
-					hasActiveSessions: {
-						$gt: [{ $size: { $ifNull: ["$refresh_tokens", []] } }, 0],
-					},
+					hasActiveSessions: { $gt: [{ $size: "$_rt" }, 0] },
 				},
 			},
 			{
@@ -482,8 +501,16 @@ export class AnalyticsService {
 				},
 			},
 			{
+				$lookup: {
+					from: "refreshtokens",
+					localField: "_id",
+					foreignField: "user_id",
+					as: "_rt",
+				},
+			},
+			{
 				$addFields: {
-					sessionCount: { $size: { $ifNull: ["$refresh_tokens", []] } },
+					sessionCount: { $size: "$_rt" },
 				},
 			},
 			{

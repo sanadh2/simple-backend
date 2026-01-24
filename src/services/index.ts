@@ -8,6 +8,14 @@ export {
 	type UpdateCompanyInput,
 	updateCompanySchema,
 } from "./companyService.js"
+export {
+	addInteractionSchema,
+	ContactService,
+	type CreateContactInput,
+	createContactSchema,
+	type UpdateContactInput,
+	updateContactSchema,
+} from "./contactService.js"
 export { EmailService } from "./emailService.js"
 export type { FileUploadService, UploadResult } from "./fileUploadService.js"
 export {

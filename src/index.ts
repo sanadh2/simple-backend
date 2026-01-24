@@ -23,10 +23,13 @@ import {
 import { globalLimiter } from "./middleware/rateLimiter.js"
 import { requestLoggerMiddleware } from "./middleware/requestLogger.js"
 import { logQueue } from "./queues/logQueue.js"
+import { reminderQueue } from "./queues/reminderQueue.js"
 import {
+	activityRoutes,
 	analyticsRoutes,
 	authRoutes,
 	companyRoutes,
+	contactRoutes,
 	interviewRoutes,
 	jobApplicationRoutes,
 	logRoutes,
@@ -36,6 +39,10 @@ import { EmailService } from "./services/index.js"
 import { logger } from "./utils/logger.js"
 import { ResponseHandler } from "./utils/responseHandler.js"
 import { startLogWorker, stopLogWorker } from "./workers/logWorker.js"
+import {
+	startReminderWorker,
+	stopReminderWorker,
+} from "./workers/reminderWorker.js"
 
 const app = express()
 const port = env.PORT
@@ -46,11 +53,26 @@ await connectDatabase()
 
 EmailService.initialize()
 startLogWorker()
+startReminderWorker()
+
+// Schedule daily follow-up reminder check at 8:00 UTC
+reminderQueue
+	.add(
+		"process-due-reminders",
+		{ type: "process-due-reminders" },
+		{ repeat: { pattern: "0 8 * * *" } }
+	)
+	.catch((err) => logger.error("Failed to schedule reminder job", err as Error))
+
+reminderQueue
+	.add("process-due-reminders", { type: "process-due-reminders" })
+	.catch((err) =>
+		logger.error("Failed to add startup reminder job", err as Error)
+	)
 
 app.use(correlation_idMiddleware)
 app.use(requestLoggerMiddleware)
-// Device fingerprinting middleware - extracts device info and creates unique fingerprint
-// Must be applied early so fingerprint is available for all routes
+
 app.use(deviceFingerprintMiddleware)
 
 app.use(
@@ -259,9 +281,11 @@ app.get(
 	})
 )
 
+app.use("/api/activity", activityRoutes)
 app.use("/api/auth", authRoutes)
 app.use("/api/analytics", analyticsRoutes)
 app.use("/api/companies", companyRoutes)
+app.use("/api/contacts", contactRoutes)
 app.use("/api/interviews", interviewRoutes)
 app.use("/api/job-applications", jobApplicationRoutes)
 app.use("/api/logs", logRoutes)
@@ -288,7 +312,9 @@ const gracefulShutdown = () => {
 
 		Promise.all([
 			logQueue.close().then(() => console.log("✓ Log queue closed")),
+			reminderQueue.close().then(() => console.log("✓ Reminder queue closed")),
 			stopLogWorker(),
+			stopReminderWorker(),
 			redisConnection
 				.quit()
 				.then(() => console.log("✓ Redis connection closed")),

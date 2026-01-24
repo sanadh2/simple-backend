@@ -178,4 +178,32 @@ export class EmailService {
 			},
 		})
 	}
+
+	static async sendFollowUpReminder(
+		email: string,
+		first_name: string,
+		context: {
+			contactName: string
+			companyName: string
+			jobTitle: string
+			reminderDate: string
+		}
+	): Promise<void> {
+		const applicationsUrl = `${env.FRONTEND_URL}/job-applications`
+
+		await this.sendEmail({
+			to: email,
+			subject: "Follow-up Reminder: Contact Due Today",
+			template: "follow-up-reminder",
+			context: {
+				first_name,
+				contactName: context.contactName,
+				companyName: context.companyName,
+				jobTitle: context.jobTitle,
+				reminderDate: context.reminderDate,
+				applicationsUrl,
+				appName: env.EMAIL_FROM_NAME,
+			},
+		})
+	}
 }

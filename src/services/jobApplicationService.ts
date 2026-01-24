@@ -367,9 +367,8 @@ export class JobApplicationService {
 
 		await Promise.allSettled(deletePromises)
 
-		// Delete the job application
-		// Note: Related StatusHistory and Interview records are automatically
-		// deleted via Mongoose middleware (cascade delete) defined in the model
+		// Delete the job application. StatusHistory, Interview, and
+		// ApplicationContact are cascade-deleted by the model's pre hook.
 		const deletePromise = JobApplication.deleteOne({
 			_id: jobApplicationId,
 			user_id: userId,

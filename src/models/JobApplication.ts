@@ -1,6 +1,9 @@
 import mongoose, { Document, Schema } from "mongoose"
 
+import { ApplicationContact } from "./ApplicationContact.js"
+import { Interaction } from "./Interaction.js"
 import { Interview } from "./Interview.js"
+import { InterviewChecklistItem } from "./InterviewChecklistItem.js"
 import { StatusHistory } from "./StatusHistory.js"
 
 export type JobStatus =
@@ -167,13 +170,39 @@ jobApplicationSchema.pre(
 				? new mongoose.Types.ObjectId(jobApplicationId)
 				: jobApplicationId
 
-		// Delete related status history records
-		await StatusHistory.deleteMany({
+		// Delete interactions for contacts of this application, then contacts
+		const contacts = await ApplicationContact.find({
+			job_application_id: applicationId,
+		})
+			.select("_id")
+			.lean()
+		const contactIds = contacts.map((c) => c._id)
+		if (contactIds.length > 0) {
+			await Interaction.deleteMany({
+				application_contact_id: { $in: contactIds },
+			})
+		}
+		await ApplicationContact.deleteMany({
 			job_application_id: applicationId,
 		})
 
-		// Delete related interviews
+		// Delete checklist items for interviews of this application, then interviews
+		const interviews = await Interview.find({
+			job_application_id: applicationId,
+		})
+			.select("_id")
+			.lean()
+		const interviewIds = interviews.map((i) => i._id)
+		if (interviewIds.length > 0) {
+			await InterviewChecklistItem.deleteMany({
+				interview_id: { $in: interviewIds },
+			})
+		}
 		await Interview.deleteMany({
+			job_application_id: applicationId,
+		})
+
+		await StatusHistory.deleteMany({
 			job_application_id: applicationId,
 		})
 	}

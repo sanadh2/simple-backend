@@ -1,6 +1,8 @@
+export { default as activityRoutes } from "./activityRoutes.js"
 export { default as analyticsRoutes } from "./analyticsRoutes.js"
 export { default as authRoutes } from "./authRoutes.js"
 export { default as companyRoutes } from "./companyRoutes.js"
+export { default as contactRoutes } from "./contactRoutes.js"
 export { default as interviewRoutes } from "./interviewRoutes.js"
 export { default as jobApplicationRoutes } from "./jobApplicationRoutes.js"
 export { default as logRoutes } from "./logRoutes.js"

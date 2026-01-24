@@ -1,6 +1,9 @@
 import bcrypt from "bcryptjs"
 import mongoose, { Document, Schema } from "mongoose"
 
+import { DeviceFingerprint } from "./DeviceFingerprint.js"
+import { RefreshToken } from "./RefreshToken.js"
+
 export interface IUser extends Document {
 	email: string
 	password: string
@@ -10,7 +13,6 @@ export interface IUser extends Document {
 	profile_picture?: string
 	current_role?: string
 	years_of_experience?: number
-	refresh_tokens: string[]
 	tokens_invalidated_at?: Date
 	email_verification_otp?: string
 	email_verification_otp_expiry?: Date
@@ -65,11 +67,6 @@ const userSchema = new Schema<IUser>(
 			type: Boolean,
 			default: false,
 		},
-		refresh_tokens: {
-			type: [String],
-			default: [],
-			select: false,
-		},
 		tokens_invalidated_at: {
 			type: Date,
 			default: null,
@@ -97,7 +94,6 @@ const userSchema = new Schema<IUser>(
 			transform: (_doc, ret: Record<string, unknown>) => {
 				const cleaned = { ...ret }
 				delete cleaned.password
-				delete cleaned.refresh_tokens
 				delete cleaned.__v
 				return cleaned
 			},
@@ -113,6 +109,20 @@ userSchema.pre("save", async function () {
 	const salt = await bcrypt.genSalt(12)
 	this.password = await bcrypt.hash(this.password, salt)
 })
+
+userSchema.pre(
+	["deleteOne", "findOneAndDelete"],
+	{ document: false, query: true },
+	async function () {
+		const filter = this.getFilter() as Record<string, unknown>
+		const userId = filter._id as mongoose.Types.ObjectId | string | undefined
+		if (!userId) return
+		const id =
+			typeof userId === "string" ? new mongoose.Types.ObjectId(userId) : userId
+		await RefreshToken.deleteMany({ user_id: id })
+		await DeviceFingerprint.deleteMany({ userId: id })
+	}
+)
 
 userSchema.methods.comparePassword = async function (
 	candidatePassword: string
