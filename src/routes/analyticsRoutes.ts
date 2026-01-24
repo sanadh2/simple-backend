@@ -1,6 +1,9 @@
 import { Router } from "express"
 
-import { AnalyticsController } from "../controllers/index.js"
+import {
+	AnalyticsController,
+	DashboardAnalyticsController,
+} from "../controllers/index.js"
 import {
 	authenticate,
 	requireEmailVerified,
@@ -11,6 +14,14 @@ const router = Router()
 
 // Apply rate limiting to all analytics routes
 router.use(apiLimiter)
+
+// User-scoped job application analytics (requires userId from authenticate)
+router.get(
+	"/dashboard",
+	authenticate,
+	requireEmailVerified,
+	DashboardAnalyticsController.getDashboard
+)
 
 router.get(
 	"/statistics",

@@ -16,6 +16,11 @@ export {
 	type UpdateContactInput,
 	updateContactSchema,
 } from "./contactService.js"
+export {
+	type ApplicationFunnel,
+	type DashboardAnalytics,
+	DashboardAnalyticsService,
+} from "./dashboardAnalyticsService.js"
 export { EmailService } from "./emailService.js"
 export type { FileUploadService, UploadResult } from "./fileUploadService.js"
 export {
