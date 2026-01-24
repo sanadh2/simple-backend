@@ -55,12 +55,12 @@ EmailService.initialize()
 startLogWorker()
 startReminderWorker()
 
-// Schedule daily follow-up reminder check at 8:00 UTC
+// Schedule reminder jobs every hour (for timezone + optional reminder_time)
 reminderQueue
 	.add(
 		"process-due-reminders",
 		{ type: "process-due-reminders" },
-		{ repeat: { pattern: "0 8 * * *" } }
+		{ repeat: { pattern: "0 * * * *" } }
 	)
 	.catch((err) => logger.error("Failed to schedule reminder job", err as Error))
 
@@ -68,6 +68,22 @@ reminderQueue
 	.add("process-due-reminders", { type: "process-due-reminders" })
 	.catch((err) =>
 		logger.error("Failed to add startup reminder job", err as Error)
+	)
+
+reminderQueue
+	.add(
+		"process-interview-reminders",
+		{ type: "process-interview-reminders" },
+		{ repeat: { pattern: "0 * * * *" } }
+	)
+	.catch((err) =>
+		logger.error("Failed to schedule interview reminder job", err as Error)
+	)
+
+reminderQueue
+	.add("process-interview-reminders", { type: "process-interview-reminders" })
+	.catch((err) =>
+		logger.error("Failed to add startup interview reminder job", err as Error)
 	)
 
 app.use(correlation_idMiddleware)

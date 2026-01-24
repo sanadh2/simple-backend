@@ -206,4 +206,34 @@ export class EmailService {
 			},
 		})
 	}
+
+	static async sendInterviewReminder(
+		email: string,
+		first_name: string,
+		context: {
+			companyName: string
+			jobTitle: string
+			interviewType: string
+			interviewFormat: string
+			scheduledAt: string
+		}
+	): Promise<void> {
+		const applicationsUrl = `${env.FRONTEND_URL}/job-applications`
+
+		await this.sendEmail({
+			to: email,
+			subject: `Interview Tomorrow: ${context.companyName} – ${context.jobTitle}`,
+			template: "interview-reminder",
+			context: {
+				first_name,
+				companyName: context.companyName,
+				jobTitle: context.jobTitle,
+				interviewType: context.interviewType,
+				interviewFormat: context.interviewFormat,
+				scheduledAt: context.scheduledAt,
+				applicationsUrl,
+				appName: env.EMAIL_FROM_NAME,
+			},
+		})
+	}
 }

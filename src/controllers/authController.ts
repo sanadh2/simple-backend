@@ -1,4 +1,5 @@
 import type { CookieOptions, Request, Response } from "express"
+import { DateTime } from "luxon"
 import { z } from "zod"
 
 import { env } from "../config/env.js"
@@ -544,6 +545,8 @@ export class AuthController {
 					profile_picture: user.profile_picture,
 					current_role: user.current_role,
 					years_of_experience: user.years_of_experience,
+					timezone: user.timezone ?? null,
+					reminder_time: user.reminder_time ?? null,
 					createdAt: user.createdAt,
 					updatedAt: user.updatedAt,
 				},
@@ -561,13 +564,21 @@ export class AuthController {
 			throw new AppError("User not found", 404)
 		}
 
-		const { first_name, last_name, currentRole, yearsOfExperience } =
-			req.body as {
-				first_name?: string
-				last_name?: string
-				currentRole?: string | null
-				yearsOfExperience?: number | null
-			}
+		const {
+			first_name,
+			last_name,
+			currentRole,
+			yearsOfExperience,
+			timezone,
+			reminderTime,
+		} = req.body as {
+			first_name?: string
+			last_name?: string
+			currentRole?: string | null
+			yearsOfExperience?: number | null
+			timezone?: string | null
+			reminderTime?: string | null
+		}
 
 		if (first_name !== undefined) {
 			if (
@@ -631,6 +642,38 @@ export class AuthController {
 			}
 		}
 
+		if (timezone !== undefined) {
+			if (timezone === null || timezone === "") {
+				const userDoc = user as unknown as Record<string, unknown>
+				delete userDoc.timezone
+			} else {
+				const zone = timezone.trim()
+				if (!DateTime.now().setZone(zone).isValid) {
+					throw new AppError(
+						"Invalid timezone. Use an IANA name (e.g. America/New_York)",
+						400
+					)
+				}
+				user.timezone = zone
+			}
+		}
+
+		if (reminderTime !== undefined) {
+			if (reminderTime === null || reminderTime === "") {
+				const userDoc = user as unknown as Record<string, unknown>
+				delete userDoc.reminder_time
+			} else {
+				const rt = reminderTime.trim()
+				if (!/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(rt)) {
+					throw new AppError(
+						"Reminder time must be in HH:mm format (e.g. 08:00)",
+						400
+					)
+				}
+				user.reminder_time = rt
+			}
+		}
+
 		await user.save()
 
 		logger.info("User profile updated", {
@@ -640,6 +683,8 @@ export class AuthController {
 				last_name: last_name !== undefined,
 				currentRole: currentRole !== undefined,
 				yearsOfExperience: yearsOfExperience !== undefined,
+				timezone: timezone !== undefined,
+				reminderTime: reminderTime !== undefined,
 			},
 		})
 
@@ -655,6 +700,8 @@ export class AuthController {
 					profile_picture: user.profile_picture,
 					current_role: user.current_role,
 					years_of_experience: user.years_of_experience,
+					timezone: user.timezone ?? null,
+					reminder_time: user.reminder_time ?? null,
 					createdAt: user.createdAt,
 					updatedAt: user.updatedAt,
 				},

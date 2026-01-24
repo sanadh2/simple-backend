@@ -14,6 +14,8 @@ export interface IUser extends Document {
 	current_role?: string
 	years_of_experience?: number
 	tokens_invalidated_at?: Date
+	timezone?: string | null
+	reminder_time?: string | null
 	email_verification_otp?: string
 	email_verification_otp_expiry?: Date
 	password_reset_otp?: string
@@ -70,6 +72,16 @@ const userSchema = new Schema<IUser>(
 		tokens_invalidated_at: {
 			type: Date,
 			default: null,
+		},
+		timezone: {
+			type: String,
+			default: null,
+			trim: true,
+		},
+		reminder_time: {
+			type: String,
+			default: null,
+			trim: true,
 		},
 		email_verification_otp: {
 			type: String,

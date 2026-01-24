@@ -3,7 +3,7 @@ import { Queue } from "bullmq"
 import { env } from "../config/env.js"
 
 export interface ReminderJob {
-	type: "process-due-reminders"
+	type: "process-due-reminders" | "process-interview-reminders"
 }
 
 const connection = {

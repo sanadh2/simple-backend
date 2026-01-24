@@ -22,6 +22,7 @@ export interface IInterview extends Document {
 	duration_minutes?: number
 	notes?: string
 	feedback?: string
+	interview_reminder_sent_at?: Date
 	createdAt: Date
 	updatedAt: Date
 }
@@ -75,6 +76,10 @@ const interviewSchema = new Schema<IInterview>(
 		feedback: {
 			type: String,
 			trim: true,
+		},
+		interview_reminder_sent_at: {
+			type: Date,
+			default: null,
 		},
 	},
 	{
