@@ -8,6 +8,8 @@ import { env } from "../config/env.js"
 import type { DeviceInfo } from "../types/deviceFingerprint.js"
 import { logger } from "../utils/logger.js"
 
+const BREVO_EMAIL_API = "https://api.brevo.com/v3/smtp/email"
+
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
@@ -25,7 +27,16 @@ export class EmailService {
 		if (this.transporter) {
 			return
 		}
-
+		// Production uses Brevo API; only init SMTP for development/test
+		if (env.NODE_ENV === "production") {
+			logger.info("Email service: using Brevo API in production")
+			return
+		}
+		if (!env.SMTP_USER || !env.SMTP_PASS) {
+			throw new Error(
+				"SMTP_USER and SMTP_PASS are required in development and test"
+			)
+		}
 		const transporter = createTransport({
 			host: env.SMTP_HOST,
 			port: env.SMTP_PORT,
@@ -35,10 +46,8 @@ export class EmailService {
 				pass: env.SMTP_PASS,
 			},
 		})
-
 		this.transporter = transporter
-
-		logger.info("Email service initialized", {
+		logger.info("Email service initialized (SMTP)", {
 			host: env.SMTP_HOST,
 			port: env.SMTP_PORT,
 		})
@@ -77,26 +86,30 @@ export class EmailService {
 	}
 
 	static async sendEmail(options: EmailOptions): Promise<void> {
-		if (!this.transporter) {
-			this.initialize()
-		}
-
-		if (!this.transporter) {
-			throw new Error("Email transporter not initialized")
-		}
+		const template = this.loadTemplate(options.template)
+		const html = template(options.context)
 
 		try {
-			const template = this.loadTemplate(options.template)
-			const html = template(options.context)
-
-			const mailOptions = {
-				from: `"${env.EMAIL_FROM_NAME}" <${env.EMAIL_FROM}>`,
-				to: options.to,
-				subject: options.subject,
-				html,
+			if (env.NODE_ENV === "production" && env.BREVO_API_KEY) {
+				await this.sendViaBrevo({
+					to: options.to,
+					subject: options.subject,
+					html,
+				})
+			} else {
+				if (!this.transporter) {
+					this.initialize()
+				}
+				if (!this.transporter) {
+					throw new Error("Email transporter not initialized")
+				}
+				await this.transporter.sendMail({
+					from: `"${env.EMAIL_FROM_NAME}" <${env.EMAIL_FROM}>`,
+					to: options.to,
+					subject: options.subject,
+					html,
+				})
 			}
-
-			await this.transporter.sendMail(mailOptions)
 
 			logger.info("Email sent successfully", {
 				to: options.to,
@@ -112,6 +125,35 @@ export class EmailService {
 				template: options.template,
 			})
 			throw error
+		}
+	}
+
+	private static async sendViaBrevo(payload: {
+		to: string
+		subject: string
+		html: string
+	}): Promise<void> {
+		const apiKey = env.BREVO_API_KEY
+		if (!apiKey) {
+			throw new Error("BREVO_API_KEY is required in production")
+		}
+		const res = await fetch(BREVO_EMAIL_API, {
+			method: "POST",
+			headers: {
+				"api-key": apiKey,
+				"content-type": "application/json",
+				accept: "application/json",
+			},
+			body: JSON.stringify({
+				sender: { name: env.EMAIL_FROM_NAME, email: env.EMAIL_FROM },
+				to: [{ email: payload.to }],
+				subject: payload.subject,
+				htmlContent: payload.html,
+			}),
+		})
+		if (!res.ok) {
+			const body = await res.text()
+			throw new Error(`Brevo API error ${res.status}: ${body}`)
 		}
 	}
 
