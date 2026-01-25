@@ -19,6 +19,13 @@ router.post(
 	JobApplicationController.create
 )
 
+router.post(
+	"/quick",
+	authenticate,
+	requireEmailVerified,
+	JobApplicationController.quick
+)
+
 router.get(
 	"/",
 	authenticate,

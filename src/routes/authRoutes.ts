@@ -1,7 +1,10 @@
 import { Router } from "express"
 
 import { AuthController } from "../controllers/index.js"
-import { authenticate } from "../middleware/authMiddleware.js"
+import {
+	authenticate,
+	requireEmailVerified,
+} from "../middleware/authMiddleware.js"
 import {
 	authLimiter,
 	passwordResetAttemptLimiter,
@@ -251,6 +254,14 @@ router.post("/refresh", authLimiter, AuthController.refreshToken)
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get("/me", authenticate, AuthController.getProfile)
+
+router.post(
+	"/extension-token",
+	authenticate,
+	requireEmailVerified,
+	authLimiter,
+	AuthController.getExtensionToken
+)
 
 /**
  * @openapi

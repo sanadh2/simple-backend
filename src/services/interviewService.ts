@@ -98,7 +98,10 @@ export class InterviewService {
 			userId,
 		})
 
-		return { ...interview.toObject(), preparation_checklist: items } as IInterview
+		return {
+			...interview.toObject(),
+			preparation_checklist: items,
+		} as IInterview
 	}
 
 	static async getById(
@@ -162,8 +165,12 @@ export class InterviewService {
 		const byInterview = new Map<string, string[]>()
 		for (const it of allItems) {
 			const k = it.interview_id.toString()
-			if (!byInterview.has(k)) byInterview.set(k, [])
-			byInterview.get(k)!.push(it.item)
+			let arr = byInterview.get(k)
+			if (!arr) {
+				arr = []
+				byInterview.set(k, arr)
+			}
+			arr.push(it.item)
 		}
 		return interviews.map((inv) => ({
 			...inv,
@@ -197,8 +204,12 @@ export class InterviewService {
 		const byInterview = new Map<string, string[]>()
 		for (const it of allItems) {
 			const k = it.interview_id.toString()
-			if (!byInterview.has(k)) byInterview.set(k, [])
-			byInterview.get(k)!.push(it.item)
+			let arr = byInterview.get(k)
+			if (!arr) {
+				arr = []
+				byInterview.set(k, arr)
+			}
+			arr.push(it.item)
 		}
 		return interviews.map((inv) => ({
 			...inv,
@@ -289,7 +300,10 @@ export class InterviewService {
 		const preparation_checklist = items.map((i) => i.item)
 
 		logger.info("Interview updated", { interviewId, userId })
-		return { ...updatedInterview.toObject(), preparation_checklist } as IInterview
+		return {
+			...updatedInterview.toObject(),
+			preparation_checklist,
+		} as IInterview
 	}
 
 	static async delete(interviewId: string, userId: string): Promise<boolean> {
@@ -355,8 +369,12 @@ export class InterviewService {
 		const byInterview = new Map<string, string[]>()
 		for (const it of allItems) {
 			const k = it.interview_id.toString()
-			if (!byInterview.has(k)) byInterview.set(k, [])
-			byInterview.get(k)!.push(it.item)
+			let arr = byInterview.get(k)
+			if (!arr) {
+				arr = []
+				byInterview.set(k, arr)
+			}
+			arr.push(it.item)
 		}
 		return interviews.map((inv) => ({
 			...inv,

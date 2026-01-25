@@ -35,6 +35,15 @@ export const createJobApplicationSchema = z.object({
 
 export const updateJobApplicationSchema = createJobApplicationSchema.partial()
 
+/** Schema for extension/bookmarklet quick-save: only company, title, description, url, method. */
+export const quickCreateJobApplicationSchema = z.object({
+	company_name: z.string().min(1, "Company name is required"),
+	job_title: z.string().min(1, "Job title is required"),
+	job_description: z.string().optional(),
+	job_posting_url: z.url().optional().or(z.literal("")),
+	application_method: z.string().optional(),
+})
+
 export type CreateJobApplicationInput = z.infer<
 	typeof createJobApplicationSchema
 >
@@ -194,7 +203,8 @@ export class JobApplicationService {
 
 		const query: Record<string, unknown> = { user_id: userId }
 
-		if (filters.status) {
+		// Treat "All" as no status filter
+		if (filters.status && filters.status !== "All") {
 			query.status = filters.status
 		}
 
@@ -213,6 +223,7 @@ export class JobApplicationService {
 			query.company_name = { $regex: filters.company_name, $options: "i" }
 		}
 
+		// Date filter: use createdAt when status is All/empty; use status "at" date when a specific status is selected
 		if (filters.startDate || filters.endDate) {
 			const dateFilter: Record<string, Date> = {}
 			if (filters.startDate) {
@@ -221,7 +232,19 @@ export class JobApplicationService {
 			if (filters.endDate) {
 				dateFilter.$lte = filters.endDate
 			}
-			query.application_date = dateFilter
+			if (!filters.status || filters.status === "All") {
+				query.createdAt = dateFilter
+			} else {
+				// Specific status: filter by that status's "at" date (Wishlisted at, Applied at, etc.) via aggregation
+				return this._getAllWithStatusDateAggregation(
+					userId,
+					filters,
+					dateFilter,
+					skip,
+					limit,
+					page
+				)
+			}
 		}
 
 		// Build sort object
@@ -268,6 +291,128 @@ export class JobApplicationService {
 
 		return {
 			applications: applicationsWithHistory,
+			totalCount,
+			currentPage: page,
+			pageSize: limit,
+			totalPages,
+		}
+	}
+
+	/**
+	 * When a specific status is selected with a date range, filter by that status's
+	 * "at" date (Wishlisted at, Applied at, etc.): from status_history, or
+	 * application_date for Applied, or createdAt as fallback.
+	 */
+	private static async _getAllWithStatusDateAggregation(
+		userId: string,
+		filters: JobApplicationFilters,
+		dateFilter: Record<string, Date>,
+		skip: number,
+		limit: number,
+		page: number
+	): Promise<PaginatedJobApplications> {
+		const sortField = filters.sortBy || "application_date"
+		const sortOrder = filters.sortOrder === "asc" ? 1 : -1
+
+		const matchStage: Record<string, unknown> = {
+			user_id: new mongoose.Types.ObjectId(userId),
+			status: filters.status,
+		}
+		if (filters.priority) {
+			matchStage.priority = filters.priority
+		}
+		if (filters.search) {
+			matchStage.$or = [
+				{ company_name: { $regex: filters.search, $options: "i" } },
+				{ job_title: { $regex: filters.search, $options: "i" } },
+			]
+		} else if (filters.company_name) {
+			matchStage.company_name = { $regex: filters.company_name, $options: "i" }
+		}
+
+		const pipeline: mongoose.PipelineStage[] = [
+			{ $match: matchStage },
+			{
+				$lookup: {
+					from: "statushistories",
+					localField: "_id",
+					foreignField: "job_application_id",
+					as: "status_history_raw",
+				},
+			},
+			{
+				$addFields: {
+					status_history: {
+						$map: {
+							input: "$status_history_raw",
+							as: "e",
+							in: {
+								status: "$$e.status",
+								changed_at: "$$e.changed_at",
+							},
+						},
+					},
+					effectiveDate: {
+						$let: {
+							vars: {
+								matching: {
+									$filter: {
+										input: "$status_history_raw",
+										as: "e",
+										cond: { $eq: ["$$e.status", "$status"] },
+									},
+								},
+							},
+							in: {
+								$cond: [
+									{ $gt: [{ $size: "$$matching" }, 0] },
+									{
+										$max: {
+											$map: {
+												input: "$$matching",
+												as: "e",
+												in: "$$e.changed_at",
+											},
+										},
+									},
+									{
+										$cond: [
+											{ $eq: ["$status", "Applied"] },
+											"$application_date",
+											"$createdAt",
+										],
+									},
+								],
+							},
+						},
+					},
+				},
+			},
+			{ $match: { effectiveDate: dateFilter } },
+			{ $sort: { [sortField]: sortOrder } },
+			{
+				$facet: {
+					total: [{ $count: "count" }],
+					data: [
+						{ $skip: skip },
+						{ $limit: limit },
+						{ $project: { status_history_raw: 0, effectiveDate: 0 } },
+					],
+				},
+			},
+		]
+
+		const result = await JobApplication.aggregate(pipeline)
+		const doc = result[0] as
+			| { total?: Array<{ count: number }>; data?: unknown[] }
+			| undefined
+		const totalCount = doc?.total?.[0]?.count ?? 0
+		const applications = (doc?.data ?? []) as IJobApplicationWithHistory[]
+
+		const totalPages = Math.ceil(totalCount / limit)
+
+		return {
+			applications,
 			totalCount,
 			currentPage: page,
 			pageSize: limit,

@@ -1,7 +1,11 @@
 import mongoose from "mongoose"
 import { z } from "zod"
 
-import { ApplicationContact, Interaction, JobApplication } from "../models/index.js"
+import {
+	ApplicationContact,
+	Interaction,
+	JobApplication,
+} from "../models/index.js"
 import { logger } from "../utils/logger.js"
 
 export const createContactSchema = z.object({
@@ -82,7 +86,10 @@ export class ContactService {
 			userId,
 		})
 
-		return { ...contact.toObject(), interaction_history: [] } as IApplicationContact
+		return {
+			...contact.toObject(),
+			interaction_history: [],
+		} as IApplicationContact
 	}
 
 	static async getById(
@@ -108,8 +115,8 @@ export class ContactService {
 			.lean()
 		const interaction_history = interactions.map((i) => ({
 			date: i.date,
-			...(i.type != null && { type: i.type }),
-			...(i.notes != null && { notes: i.notes }),
+			...(i.type !== null && i.type !== undefined && { type: i.type }),
+			...(i.notes !== null && i.notes !== undefined && { notes: i.notes }),
 		}))
 		return { ...contact.toObject(), interaction_history } as IApplicationContact
 	}
@@ -142,14 +149,21 @@ export class ContactService {
 						.sort({ date: -1 })
 						.lean()
 				: []
-		const byContact = new Map<string, Array<{ date: Date; type?: string; notes?: string }>>()
+		const byContact = new Map<
+			string,
+			Array<{ date: Date; type?: string; notes?: string }>
+		>()
 		for (const i of interactions) {
 			const k = i.application_contact_id.toString()
-			if (!byContact.has(k)) byContact.set(k, [])
-			byContact.get(k)!.push({
+			let arr = byContact.get(k)
+			if (!arr) {
+				arr = []
+				byContact.set(k, arr)
+			}
+			arr.push({
 				date: i.date,
-				...(i.type != null && { type: i.type }),
-				...(i.notes != null && { notes: i.notes }),
+				...(i.type !== null && i.type !== undefined && { type: i.type }),
+				...(i.notes !== null && i.notes !== undefined && { notes: i.notes }),
 			})
 		}
 		return contacts.map((c) => ({
@@ -215,8 +229,8 @@ export class ContactService {
 			.lean()
 		const interaction_history = interactions.map((i) => ({
 			date: i.date,
-			...(i.type != null && { type: i.type }),
-			...(i.notes != null && { notes: i.notes }),
+			...(i.type !== null && i.type !== undefined && { type: i.type }),
+			...(i.notes !== null && i.notes !== undefined && { notes: i.notes }),
 		}))
 		logger.info("Application contact updated", { contactId, userId })
 		return { ...updated.toObject(), interaction_history } as IApplicationContact
@@ -261,8 +275,9 @@ export class ContactService {
 		await Interaction.create({
 			application_contact_id: contactId,
 			date: interactionDate,
-			...(data.type != null && { type: data.type }),
-			...(data.notes != null && { notes: data.notes }),
+			...(data.type !== null && data.type !== undefined && { type: data.type }),
+			...(data.notes !== null &&
+				data.notes !== undefined && { notes: data.notes }),
 		})
 
 		const updated = await ApplicationContact.findByIdAndUpdate(
@@ -280,8 +295,8 @@ export class ContactService {
 			.lean()
 		const interaction_history = interactions.map((i) => ({
 			date: i.date,
-			...(i.type != null && { type: i.type }),
-			...(i.notes != null && { notes: i.notes }),
+			...(i.type !== null && i.type !== undefined && { type: i.type }),
+			...(i.notes !== null && i.notes !== undefined && { notes: i.notes }),
 		}))
 		logger.info("Interaction added to contact", { contactId, userId })
 		return { ...updated.toObject(), interaction_history } as IApplicationContact

@@ -48,7 +48,10 @@ export class ActivityService {
 			.lean()
 		const appIds = userApps.map((a) => a._id)
 		const appMap = new Map(
-			userApps.map((a) => [a._id.toString(), { company_name: a.company_name, job_title: a.job_title }])
+			userApps.map((a) => [
+				a._id.toString(),
+				{ company_name: a.company_name, job_title: a.job_title },
+			])
 		)
 
 		if (appIds.length === 0) {

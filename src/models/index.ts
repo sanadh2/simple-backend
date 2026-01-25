@@ -10,8 +10,8 @@ export {
 } from "./Company.js"
 export {
 	CompanyAttribute,
-	type ICompanyAttribute,
 	type CompanyAttributeKind,
+	type ICompanyAttribute,
 } from "./CompanyAttribute.js"
 export {
 	DeviceFingerprint,
@@ -25,8 +25,8 @@ export {
 	type InterviewType,
 } from "./Interview.js"
 export {
-	InterviewChecklistItem,
 	type IInterviewChecklistItem,
+	InterviewChecklistItem,
 } from "./InterviewChecklistItem.js"
 export { type IJobApplication, JobApplication } from "./JobApplication.js"
 export { Log } from "./Log.js"

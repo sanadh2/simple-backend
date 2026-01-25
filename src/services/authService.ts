@@ -3,13 +3,13 @@ import type { StringValue } from "ms"
 
 import { env } from "../config/env.js"
 import { AppError } from "../middleware/errorHandler.js"
-import { RefreshToken, type IUser, User } from "../models/index.js"
+import { type IUser, RefreshToken, User } from "../models/index.js"
 import { logger } from "../utils/logger.js"
 
 export interface TokenPayload {
 	userId: string
 	email: string
-	type: "access" | "refresh"
+	type: "access" | "refresh" | "extension"
 	iat?: number
 	exp?: number
 }
@@ -52,6 +52,23 @@ export class AuthService {
 		}
 
 		return jwt.sign(payload, env.JWT_REFRESH_SECRET, options)
+	}
+
+	/**
+	 * Generate extension token (long-lived for browser extension)
+	 */
+	static generateExtensionToken(userId: string, email: string): string {
+		const payload: TokenPayload = {
+			userId,
+			email,
+			type: "extension",
+		}
+
+		const options: SignOptions = {
+			expiresIn: env.JWT_EXTENSION_EXPIRY as StringValue,
+		}
+
+		return jwt.sign(payload, env.JWT_ACCESS_SECRET, options)
 	}
 
 	/**
@@ -102,7 +119,7 @@ export class AuthService {
 		try {
 			const decoded = jwt.verify(token, env.JWT_ACCESS_SECRET) as TokenPayload
 
-			if (decoded.type !== "access") {
+			if (decoded.type !== "access" && decoded.type !== "extension") {
 				logger.warn("Invalid token type for access token", {
 					tokenType: decoded.type,
 				})

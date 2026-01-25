@@ -442,7 +442,7 @@ export class DashboardAnalyticsService {
 			currencies.size > 1
 				? "mixed"
 				: currencies.size === 1
-					? [...currencies][0]!
+					? ([...currencies][0] ?? "unknown")
 					: "unknown"
 
 		const byPeriod = { annual: 0, monthly: 0, hourly: 0 }

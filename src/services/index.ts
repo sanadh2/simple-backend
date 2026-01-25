@@ -34,6 +34,7 @@ export {
 	type CreateJobApplicationInput,
 	createJobApplicationSchema,
 	JobApplicationService,
+	quickCreateJobApplicationSchema,
 	type UpdateJobApplicationInput,
 	updateJobApplicationSchema,
 } from "./jobApplicationService.js"

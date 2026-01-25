@@ -233,8 +233,6 @@ export class CompanyService {
 			}
 		}
 
-		// Get application counts for each company
-		const companyIdStrs = companyIds.map((c) => c.toString())
 		const applicationCountsResult = await JobApplication.aggregate([
 			{
 				$match: {
@@ -327,16 +325,30 @@ export class CompanyService {
 			updateData.interview_process_overview = data.interview_process_overview
 
 		if (data.pros !== undefined || data.cons !== undefined) {
-			const existing = await CompanyAttribute.find({ company_id: companyId }).lean()
-			const existingPros = existing.filter((a) => a.kind === "pro").map((a) => a.value)
-			const existingCons = existing.filter((a) => a.kind === "con").map((a) => a.value)
+			const existing = await CompanyAttribute.find({
+				company_id: companyId,
+			}).lean()
+			const existingPros = existing
+				.filter((a) => a.kind === "pro")
+				.map((a) => a.value)
+			const existingCons = existing
+				.filter((a) => a.kind === "con")
+				.map((a) => a.value)
 			await CompanyAttribute.deleteMany({ company_id: companyId })
 			const pros = data.pros ?? existingPros
 			const cons = data.cons ?? existingCons
 			if (pros.length > 0 || cons.length > 0) {
 				await CompanyAttribute.insertMany([
-					...pros.map((value: string) => ({ company_id: companyId, kind: "pro" as const, value })),
-					...cons.map((value: string) => ({ company_id: companyId, kind: "con" as const, value })),
+					...pros.map((value: string) => ({
+						company_id: companyId,
+						kind: "pro" as const,
+						value,
+					})),
+					...cons.map((value: string) => ({
+						company_id: companyId,
+						kind: "con" as const,
+						value,
+					})),
 				])
 			}
 		}

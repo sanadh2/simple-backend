@@ -38,9 +38,13 @@ export const globalLimiter = rateLimit({
 		message:
 			"Too many requests from this IP (max 1000 per 15 min), please try again later",
 	},
-	skip: (_req) => {
-		// Skip rate limiting in test environment
-		return env.NODE_ENV === "test" || env.NODE_ENV === "development"
+	skip: (req) => {
+		// Skip rate limiting in test and development
+		return (
+			env.NODE_ENV === "test" ||
+			env.NODE_ENV === "development" ||
+			req.path === "/health"
+		)
 	},
 	handler: (req, res) => {
 		logger.warn("Global rate limit exceeded", {

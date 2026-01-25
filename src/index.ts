@@ -93,7 +93,13 @@ app.use(deviceFingerprintMiddleware)
 
 app.use(
 	cors({
-		origin: env.FRONTEND_URL.split(",").map((url) => url.trim()),
+		origin: (origin, cb) => {
+			const allowed = env.FRONTEND_URL.split(",").map((u) => u.trim())
+			if (!origin) return cb(null, true)
+			if (allowed.includes(origin)) return cb(null, true)
+			if (/^chrome-extension:\/\//.test(origin)) return cb(null, true)
+			return cb(null, false)
+		},
 		credentials: true,
 		methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
 		allowedHeaders: [

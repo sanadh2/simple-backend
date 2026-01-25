@@ -554,6 +554,21 @@ export class AuthController {
 		})
 	})
 
+	static getExtensionToken = asyncHandler((req: Request, res: Response) => {
+		if (!req.userId || !req.user) {
+			throw new AppError("Authentication required", 401)
+		}
+		const token = AuthService.generateExtensionToken(
+			req.user._id.toString(),
+			req.user.email
+		)
+		ResponseHandler.success(res, 200, {
+			message:
+				"Extension token generated. Copy it once; it will not be shown again.",
+			data: { token },
+		})
+	})
+
 	static updateProfile = asyncHandler(async (req: Request, res: Response) => {
 		if (!req.userId) {
 			throw new AppError("Authentication required", 401)
