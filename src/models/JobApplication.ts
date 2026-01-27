@@ -4,6 +4,7 @@ import { ApplicationContact } from "./ApplicationContact.js"
 import { Interaction } from "./Interaction.js"
 import { Interview } from "./Interview.js"
 import { InterviewChecklistItem } from "./InterviewChecklistItem.js"
+import { ScheduledEmail } from "./ScheduledEmail.js"
 import { StatusHistory } from "./StatusHistory.js"
 
 export type JobStatus =
@@ -169,6 +170,8 @@ jobApplicationSchema.pre(
 			typeof jobApplicationId === "string"
 				? new mongoose.Types.ObjectId(jobApplicationId)
 				: jobApplicationId
+
+		await ScheduledEmail.deleteMany({ job_application_id: applicationId })
 
 		// Delete interactions for contacts of this application, then contacts
 		const contacts = await ApplicationContact.find({

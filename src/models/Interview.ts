@@ -1,6 +1,7 @@
 import mongoose, { Document, Schema } from "mongoose"
 
 import { InterviewChecklistItem } from "./InterviewChecklistItem.js"
+import { ScheduledEmail } from "./ScheduledEmail.js"
 
 export type InterviewType =
 	| "phone_screen"
@@ -113,6 +114,10 @@ interviewSchema.pre(
 				? new mongoose.Types.ObjectId(interviewId)
 				: interviewId
 		await InterviewChecklistItem.deleteMany({ interview_id: id })
+		await ScheduledEmail.deleteMany({
+			parent_type: "Interview",
+			parent_id: id,
+		})
 	}
 )
 

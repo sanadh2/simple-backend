@@ -5,6 +5,7 @@ import {
 	Interview,
 	InterviewChecklistItem,
 	JobApplication,
+	ScheduledEmail,
 } from "../models/index.js"
 import { logger } from "../utils/logger.js"
 
@@ -91,6 +92,25 @@ export class InterviewService {
 				items.map((item) => ({ interview_id: interview._id, item }))
 			)
 		}
+
+		const dayBefore = new Date(interview.scheduled_at)
+		dayBefore.setUTCDate(dayBefore.getUTCDate() - 1)
+		dayBefore.setUTCHours(0, 0, 0, 0)
+		await ScheduledEmail.create({
+			type: "interview",
+			parent_type: "Interview",
+			parent_id: interview._id,
+			job_application_id: new mongoose.Types.ObjectId(data.job_application_id),
+			user_id: jobApplication.user_id,
+			scheduled_for: dayBefore,
+			status: "pending",
+			meta: {
+				company_name: jobApplication.company_name,
+				job_title: jobApplication.job_title,
+				interview_type: data.interview_type,
+				interview_format: data.interview_format,
+			},
+		})
 
 		logger.info("Interview created", {
 			interviewId: interview._id.toString(),
@@ -290,6 +310,37 @@ export class InterviewService {
 
 		if (!updatedInterview) {
 			return null
+		}
+
+		const jobAppForEmail = await JobApplication.findById(
+			updatedInterview.job_application_id
+		)
+			.select("user_id company_name job_title")
+			.lean()
+		if (jobAppForEmail) {
+			const dayBefore = new Date(updatedInterview.scheduled_at)
+			dayBefore.setUTCDate(dayBefore.getUTCDate() - 1)
+			dayBefore.setUTCHours(0, 0, 0, 0)
+			await ScheduledEmail.findOneAndUpdate(
+				{ parent_type: "Interview", parent_id: updatedInterview._id },
+				{
+					$set: {
+						type: "interview",
+						job_application_id: updatedInterview.job_application_id,
+						user_id: jobAppForEmail.user_id,
+						scheduled_for: dayBefore,
+						status: "pending",
+						meta: {
+							company_name: jobAppForEmail.company_name,
+							job_title: jobAppForEmail.job_title,
+							interview_type: updatedInterview.interview_type,
+							interview_format: updatedInterview.interview_format,
+						},
+					},
+					$unset: { sent_at: "", failure_message: "" },
+				},
+				{ upsert: true }
+			)
 		}
 
 		const items = await InterviewChecklistItem.find({

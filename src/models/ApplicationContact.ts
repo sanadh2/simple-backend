@@ -1,6 +1,7 @@
 import mongoose, { Document, Schema } from "mongoose"
 
 import { Interaction } from "./Interaction.js"
+import { ScheduledEmail } from "./ScheduledEmail.js"
 
 export interface IApplicationContact extends Document {
 	job_application_id: mongoose.Types.ObjectId
@@ -81,6 +82,10 @@ applicationContactSchema.pre(
 				? new mongoose.Types.ObjectId(contactId)
 				: contactId
 		await Interaction.deleteMany({ application_contact_id: id })
+		await ScheduledEmail.deleteMany({
+			parent_type: "ApplicationContact",
+			parent_id: id,
+		})
 	}
 )
 

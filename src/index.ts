@@ -34,6 +34,7 @@ import {
 	jobApplicationRoutes,
 	logRoutes,
 	resumeRoutes,
+	scheduledEmailRoutes,
 } from "./routes/index.js"
 import { EmailService } from "./services/index.js"
 import { logger } from "./utils/logger.js"
@@ -312,6 +313,7 @@ app.use("/api/interviews", interviewRoutes)
 app.use("/api/job-applications", jobApplicationRoutes)
 app.use("/api/logs", logRoutes)
 app.use("/api/resumes", resumeRoutes)
+app.use("/api/scheduled-emails", scheduledEmailRoutes)
 
 app.use(notFoundHandler)
 

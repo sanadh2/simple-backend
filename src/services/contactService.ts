@@ -5,6 +5,7 @@ import {
 	ApplicationContact,
 	Interaction,
 	JobApplication,
+	ScheduledEmail,
 } from "../models/index.js"
 import { logger } from "../utils/logger.js"
 
@@ -79,6 +80,25 @@ export class ContactService {
 		const contact = await ApplicationContact.create(
 			contactData as Parameters<typeof ApplicationContact.create>[0]
 		)
+
+		if (data.follow_up_reminder_at) {
+			await ScheduledEmail.create({
+				type: "follow_up",
+				parent_type: "ApplicationContact",
+				parent_id: contact._id,
+				job_application_id: new mongoose.Types.ObjectId(
+					data.job_application_id
+				),
+				user_id: jobApplication.user_id,
+				scheduled_for: data.follow_up_reminder_at,
+				status: "pending",
+				meta: {
+					company_name: jobApplication.company_name,
+					job_title: jobApplication.job_title,
+					contact_name: data.name,
+				},
+			})
+		}
 
 		logger.info("Application contact created", {
 			contactId: contact._id.toString(),
@@ -221,6 +241,38 @@ export class ContactService {
 		)
 
 		if (!updated) return null
+
+		if (updated.follow_up_reminder_at) {
+			const jobApp = await JobApplication.findById(updated.job_application_id)
+				.select("user_id company_name job_title")
+				.lean()
+			if (jobApp) {
+				await ScheduledEmail.findOneAndUpdate(
+					{ parent_type: "ApplicationContact", parent_id: updated._id },
+					{
+						$set: {
+							type: "follow_up",
+							job_application_id: updated.job_application_id,
+							user_id: jobApp.user_id,
+							scheduled_for: updated.follow_up_reminder_at,
+							status: "pending",
+							meta: {
+								company_name: jobApp.company_name,
+								job_title: jobApp.job_title,
+								contact_name: updated.name,
+							},
+						},
+						$unset: { sent_at: "", failure_message: "" },
+					},
+					{ upsert: true }
+				)
+			}
+		} else {
+			await ScheduledEmail.deleteMany({
+				parent_type: "ApplicationContact",
+				parent_id: updated._id,
+			})
+		}
 
 		const interactions = await Interaction.find({
 			application_contact_id: contactId,

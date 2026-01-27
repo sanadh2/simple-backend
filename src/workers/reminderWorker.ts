@@ -6,6 +6,7 @@ import {
 	ApplicationContact,
 	Interview,
 	JobApplication,
+	ScheduledEmail,
 	User,
 } from "../models/index.js"
 import type { ReminderJob } from "../queues/reminderQueue.js"
@@ -142,12 +143,32 @@ export const reminderWorker = new Worker<ReminderJob>(
 					await ApplicationContact.findByIdAndUpdate(contact._id, {
 						$set: { follow_up_reminder_sent_at: new Date() },
 					})
+					await ScheduledEmail.updateOne(
+						{
+							parent_type: "ApplicationContact",
+							parent_id: contact._id,
+						},
+						{ $set: { status: "sent", sent_at: new Date() } }
+					)
 
 					logger.info("Follow-up reminder email sent", {
 						contactId: contact._id,
 						userId: user._id,
 					})
 				} catch (error) {
+					await ScheduledEmail.updateOne(
+						{
+							parent_type: "ApplicationContact",
+							parent_id: contact._id,
+						},
+						{
+							$set: {
+								status: "failed",
+								failure_message:
+									error instanceof Error ? error.message : String(error),
+							},
+						}
+					)
 					logger.error("Failed to send follow-up reminder", {
 						contactId: contact._id,
 						error: error instanceof Error ? error.message : String(error),
@@ -232,12 +253,32 @@ export const reminderWorker = new Worker<ReminderJob>(
 					await Interview.findByIdAndUpdate(interview._id, {
 						$set: { interview_reminder_sent_at: new Date() },
 					})
+					await ScheduledEmail.updateOne(
+						{
+							parent_type: "Interview",
+							parent_id: interview._id,
+						},
+						{ $set: { status: "sent", sent_at: new Date() } }
+					)
 
 					logger.info("Interview reminder email sent", {
 						interviewId: interview._id,
 						userId: user._id,
 					})
 				} catch (error) {
+					await ScheduledEmail.updateOne(
+						{
+							parent_type: "Interview",
+							parent_id: interview._id,
+						},
+						{
+							$set: {
+								status: "failed",
+								failure_message:
+									error instanceof Error ? error.message : String(error),
+							},
+						}
+					)
 					logger.error("Failed to send interview reminder", {
 						interviewId: interview._id,
 						error: error instanceof Error ? error.message : String(error),
