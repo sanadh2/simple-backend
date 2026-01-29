@@ -5,8 +5,12 @@ import cookieParser from "cookie-parser"
 import cors from "cors"
 import express, { type Request, type Response } from "express"
 import session from "express-session"
+import { readFileSync } from "fs"
 import mongoose from "mongoose"
+import { join } from "path"
+import { dirname } from "path"
 import swaggerUi from "swagger-ui-express"
+import { fileURLToPath } from "url"
 
 import { connectDatabase } from "./config/database.js"
 import { env } from "./config/env.js"
@@ -171,9 +175,43 @@ function formatUptime(seconds: number): string {
 	return parts.join(", ")
 }
 
+/**
+ * Reads build information from the build-info.json file generated during build
+ */
+function getBuildInfo(): {
+	buildTime: string | null
+	buildTimestamp: number | null
+} {
+	try {
+		const __filename = fileURLToPath(import.meta.url)
+		const __dirname = dirname(__filename)
+		// When running from dist/index.js, build-info.json is in the same directory
+		const buildInfoPath = join(__dirname, "build-info.json")
+		const buildInfo = JSON.parse(readFileSync(buildInfoPath, "utf-8")) as {
+			buildTime: string
+			timestamp: number
+		}
+		return {
+			buildTime: buildInfo.buildTime,
+			buildTimestamp: buildInfo.timestamp,
+		}
+	} catch (error) {
+		// Build info not available (e.g., running in dev mode without build)
+		logger.debug("Build info not available", {
+			error: error instanceof Error ? error.message : "Unknown error",
+			path: join(dirname(fileURLToPath(import.meta.url)), "build-info.json"),
+		})
+		return {
+			buildTime: null,
+			buildTimestamp: null,
+		}
+	}
+}
+
 app.get(
 	"/health",
 	asyncHandler(async (_req: Request, res: Response) => {
+		const buildInfo = getBuildInfo()
 		const checks = {
 			server: {
 				status: "healthy",
@@ -237,6 +275,15 @@ app.get(
 				checks,
 				uptime: formatUptime(process.uptime()),
 				environment: env.NODE_ENV,
+				build: buildInfo.buildTime
+					? {
+							buildTime: buildInfo.buildTime,
+							buildTimestamp: buildInfo.buildTimestamp,
+							buildAge: buildInfo.buildTimestamp
+								? formatUptime((Date.now() - buildInfo.buildTimestamp) / 1000)
+								: null,
+						}
+					: null,
 			},
 		})
 	})
