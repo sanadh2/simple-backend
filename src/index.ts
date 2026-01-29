@@ -179,8 +179,11 @@ function formatUptime(seconds: number): string {
  * Reads build information from the build-info.json file generated during build
  */
 function getBuildInfo(): {
-	buildTime: string | null
-	buildTimestamp: number | null
+	buildStartTime: string | null
+	buildStartTimestamp: number | null
+	buildEndTime: string | null
+	buildEndTimestamp: number | null
+	buildDuration: number | null
 } {
 	try {
 		const __filename = fileURLToPath(import.meta.url)
@@ -188,12 +191,18 @@ function getBuildInfo(): {
 		// When running from dist/index.js, build-info.json is in the same directory
 		const buildInfoPath = join(__dirname, "build-info.json")
 		const buildInfo = JSON.parse(readFileSync(buildInfoPath, "utf-8")) as {
-			buildTime: string
-			timestamp: number
+			buildStartTime?: string
+			buildStartTimestamp?: number
+			buildEndTime: string
+			buildEndTimestamp: number
+			buildDuration?: number
 		}
 		return {
-			buildTime: buildInfo.buildTime,
-			buildTimestamp: buildInfo.timestamp,
+			buildStartTime: buildInfo.buildStartTime || null,
+			buildStartTimestamp: buildInfo.buildStartTimestamp || null,
+			buildEndTime: buildInfo.buildEndTime,
+			buildEndTimestamp: buildInfo.buildEndTimestamp,
+			buildDuration: buildInfo.buildDuration || null,
 		}
 	} catch (error) {
 		// Build info not available (e.g., running in dev mode without build)
@@ -202,8 +211,11 @@ function getBuildInfo(): {
 			path: join(dirname(fileURLToPath(import.meta.url)), "build-info.json"),
 		})
 		return {
-			buildTime: null,
-			buildTimestamp: null,
+			buildStartTime: null,
+			buildStartTimestamp: null,
+			buildEndTime: null,
+			buildEndTimestamp: null,
+			buildDuration: null,
 		}
 	}
 }
@@ -275,12 +287,18 @@ app.get(
 				checks,
 				uptime: formatUptime(process.uptime()),
 				environment: env.NODE_ENV,
-				build: buildInfo.buildTime
+				build: buildInfo.buildEndTime
 					? {
-							buildTime: buildInfo.buildTime,
-							buildTimestamp: buildInfo.buildTimestamp,
-							buildAge: buildInfo.buildTimestamp
-								? formatUptime((Date.now() - buildInfo.buildTimestamp) / 1000)
+							buildStartTime: buildInfo.buildStartTime,
+							buildEndTime: buildInfo.buildEndTime,
+							buildDuration: buildInfo.buildDuration
+								? formatUptime(buildInfo.buildDuration / 1000)
+								: null,
+							buildDurationMs: buildInfo.buildDuration,
+							buildAge: buildInfo.buildEndTimestamp
+								? formatUptime(
+										(Date.now() - buildInfo.buildEndTimestamp) / 1000
+									)
 								: null,
 						}
 					: null,
