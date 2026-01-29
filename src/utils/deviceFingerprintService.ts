@@ -87,24 +87,58 @@ export async function saveDeviceFingerprint(
 }
 
 /**
+ * Extended device fingerprint type that includes eventType
+ */
+export interface DeviceFingerprintWithEvent extends DeviceFingerprintType {
+	eventType: string
+}
+
+/**
  * Find all fingerprints associated with a user
  * Useful for showing users their login history or device list
  *
  * @param userId - The user ID to look up
- * @returns Promise that resolves to an array of device fingerprints
+ * @returns Promise that resolves to an array of device fingerprints with eventType
  */
-export function getUserDeviceFingerprints(
+export async function getUserDeviceFingerprints(
 	userId: string
-): DeviceFingerprintType[] {
+): Promise<DeviceFingerprintWithEvent[]> {
 	try {
-		// TODO: Implement database query
-		//
-		// Example:
-		// const DeviceFingerprint = mongoose.model("DeviceFingerprint", DeviceFingerprintSchema)
-		// return await DeviceFingerprint.find({ userId }).sort({ createdAt: -1 })
-
 		logger.debug("Getting device fingerprints for user", { userId })
-		return []
+
+		const userObjectId = new mongoose.Types.ObjectId(userId)
+		const fingerprints = await DeviceFingerprint.find({
+			userId: userObjectId,
+		})
+			.sort({ createdAt: -1 })
+			.lean()
+
+		// Transform database documents to match DeviceFingerprintType interface
+		// Include eventType from the database
+		const transformedFingerprints: DeviceFingerprintWithEvent[] =
+			fingerprints.map((fp) => ({
+				fingerprintHash: fp.fingerprintHash,
+				deviceInfo: {
+					ip: fp.ip,
+					clientFingerprint: fp.client_fingerprint,
+					browserName: fp.browser_name,
+					browserVersion: fp.browser_version,
+					osName: fp.os_name,
+					osVersion: fp.os_version,
+					deviceType: fp.device_type,
+					acceptLanguage: fp.accept_language,
+					acceptEncoding: fp.accept_encoding,
+				},
+				createdAt: fp.createdAt,
+				eventType: fp.eventType || "unknown",
+			}))
+
+		logger.debug("Device fingerprints retrieved", {
+			userId,
+			count: transformedFingerprints.length,
+		})
+
+		return transformedFingerprints
 	} catch (error) {
 		logger.error("Failed to get user device fingerprints", {
 			error: error instanceof Error ? error.message : "Unknown error",

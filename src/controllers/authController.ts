@@ -8,6 +8,7 @@ import { User } from "../models/index.js"
 import { AuthService, EmailService, OTPService } from "../services/index.js"
 import {
 	fingerprintExists,
+	getUserDeviceFingerprints,
 	saveDeviceFingerprint,
 } from "../utils/deviceFingerprintService.js"
 import { Logger, logger } from "../utils/logger.js"
@@ -568,6 +569,38 @@ export class AuthController {
 			data: { token },
 		})
 	})
+
+	static getDeviceHistory = asyncHandler(
+		async (req: Request, res: Response) => {
+			if (!req.userId || !req.user) {
+				throw new AppError("Authentication required", 401)
+			}
+
+			const fingerprints = await getUserDeviceFingerprints(
+				req.user._id.toString()
+			)
+
+			// Transform to response format
+			const devices = fingerprints.map((fp) => ({
+				id: fp.fingerprintHash,
+				fingerprintHash: fp.fingerprintHash,
+				browserName: fp.deviceInfo.browserName || "Unknown",
+				browserVersion: fp.deviceInfo.browserVersion || "",
+				osName: fp.deviceInfo.osName || "Unknown",
+				osVersion: fp.deviceInfo.osVersion || "",
+				deviceType: fp.deviceInfo.deviceType || "unknown",
+				ip: fp.deviceInfo.ip,
+				eventType: fp.eventType || "login",
+				createdAt: fp.createdAt,
+				lastSeen: fp.createdAt,
+			}))
+
+			ResponseHandler.success(res, 200, {
+				message: "Device history retrieved successfully",
+				data: { devices },
+			})
+		}
+	)
 
 	static updateProfile = asyncHandler(async (req: Request, res: Response) => {
 		if (!req.userId) {

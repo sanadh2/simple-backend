@@ -265,6 +265,76 @@ router.post(
 
 /**
  * @openapi
+ * /api/auth/device-history:
+ *   get:
+ *     tags:
+ *       - Authentication
+ *     summary: Get device login history
+ *     description: Retrieve authenticated user's device login history
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Device history retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Device history retrieved successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     devices:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           fingerprintHash:
+ *                             type: string
+ *                           browserName:
+ *                             type: string
+ *                           browserVersion:
+ *                             type: string
+ *                           osName:
+ *                             type: string
+ *                           osVersion:
+ *                             type: string
+ *                           deviceType:
+ *                             type: string
+ *                           ip:
+ *                             type: string
+ *                           eventType:
+ *                             type: string
+ *                           createdAt:
+ *                             type: string
+ *                             format: date-time
+ *                           lastSeen:
+ *                             type: string
+ *                             format: date-time
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get(
+	"/device-history",
+	authenticate,
+	authLimiter,
+	AuthController.getDeviceHistory
+)
+
+/**
+ * @openapi
  * /api/auth/update-profile:
  *   put:
  *     tags:
