@@ -29,6 +29,9 @@ export const globalLimiter = rateLimit({
 	max: 1000, // Limit each IP to 1000 requests per windowMs
 	standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
 	legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+	// Fail open: if Redis is unreachable, allow the request through (and log the
+	// store error) rather than returning 500, so the app keeps serving traffic.
+	passOnStoreError: true,
 	store: new RedisStore({
 		sendCommand: createSendCommand(),
 		prefix: "rl:global:",
@@ -71,6 +74,7 @@ export const authLimiter = rateLimit({
 	max: 20, // Limit each IP to 20 requests per windowMs
 	standardHeaders: true,
 	legacyHeaders: false,
+	passOnStoreError: true,
 	store: new RedisStore({
 		sendCommand: createSendCommand(),
 		prefix: "rl:auth:",
@@ -116,6 +120,7 @@ export const apiLimiter = rateLimit({
 	max: 200, // Limit each IP to 200 requests per windowMs
 	standardHeaders: true,
 	legacyHeaders: false,
+	passOnStoreError: true,
 	store: new RedisStore({
 		sendCommand: createSendCommand(),
 		prefix: "rl:api:",
@@ -139,6 +144,7 @@ export const strictLimiter = rateLimit({
 	max: 10, // Limit each IP to 10 requests per hour
 	standardHeaders: true,
 	legacyHeaders: false,
+	passOnStoreError: true,
 	store: new RedisStore({
 		sendCommand: createSendCommand(),
 		prefix: "rl:strict:",
@@ -173,6 +179,7 @@ export const passwordResetRequestLimiter = rateLimit({
 		const ip = req.ip || req.socket.remoteAddress || "unknown"
 		return `password-reset-request:${ipKeyGenerator(ip)}`
 	},
+	passOnStoreError: true,
 	store: new RedisStore({
 		sendCommand: createSendCommand(),
 		prefix: "rl:pw-reset-req:",
@@ -225,6 +232,7 @@ export const passwordResetAttemptLimiter = rateLimit({
 		const ip = req.ip || req.socket.remoteAddress || "unknown"
 		return `password-reset-attempt:${ipKeyGenerator(ip)}`
 	},
+	passOnStoreError: true,
 	store: new RedisStore({
 		sendCommand: createSendCommand(),
 		prefix: "rl:pw-reset-attempt:",
